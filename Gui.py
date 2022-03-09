@@ -10,9 +10,14 @@ import  ImageAnnotator
 import imutils
 
 import json
+import cv2
+
+IMAGE_WIDTH = 1400
+IMAGE_HEIGHT = 790
+LABEL_EMPTY_PATH = "Empty path"
 
 class Gui:
-    LABEL_EMPTY_PATH = "Empty path"
+    
     def __init__(self, master):
         self.master = master
         #Disable resize
@@ -28,19 +33,21 @@ class Gui:
         self.current_image_shape = (0,0,0)
         self.gender_selected = IntVar(master)
         self.person_selected_id = None
-
+        self.show_anotations = True
+         
         # REGISTER BUTTONS COMMANDS
         select_file_cmd = master.register(self.select_file)
         play_images_seq_cmd = master.register(self.play_images_seq)
         pause_images_seq_cmd = master.register(self.pause_images_seq)
         save_annotation_cmd = master.register(self.save_annotation)
+        hide_anotations_cmd = master.register(self.hide_anotations)
 
         # BUILD INTERFACE
         self.visualize_button = Button(master, text = "Select an annotations file", command = select_file_cmd)
-        self.path_label = Label(root, text = Gui.LABEL_EMPTY_PATH)      
+        self.path_label = Label(root, text = LABEL_EMPTY_PATH)      
         #   => IMAGE PANEL
         #self.image_panel = PanedWindow(bd = 0, bg="white", width= 800, height=450)
-        self.image = Canvas(master, width=800, height=450)
+        self.image = Canvas(master, width = IMAGE_WIDTH, height=IMAGE_HEIGHT)
         self.image.bind("<Button 1>", self.click_event)
         # self.image_panel.add(self.image)
 
@@ -48,9 +55,11 @@ class Gui:
         self.tools_panel = PanedWindow(bd = 4,orient= VERTICAL, width= 200, height=450)
         play_button = Button(self.tools_panel, text = "Play", command = play_images_seq_cmd)
         stop_button = Button(self.tools_panel, text = "Pause", command = pause_images_seq_cmd)
+        hide_button = Button(self.tools_panel, text = "Hide/Show anotations", command = hide_anotations_cmd)
         self.person_selected_label = Label(root, text = "Person Id: " + str(self.person_selected_id))
         self.tools_panel.add(play_button)
         self.tools_panel.add(stop_button)
+        self.tools_panel.add(hide_button)
         self.tools_panel.add(self.person_selected_label)
         #       => GENDER PANEL
         self.gender_panel = PanedWindow(bd = 4,orient= HORIZONTAL,width= 200, height=50)
@@ -61,7 +70,15 @@ class Gui:
         self.gender_panel.add(r1)
         self.gender_panel.add(r2)
         self.tools_panel.add(self.gender_panel)
-        
+        #       =>AGE PANEL
+        self.age_panel = PanedWindow(bd = 4,orient= HORIZONTAL,width= 100, height=30)
+        label = Label(root, text = "Age:") 
+        self.age = Entry(root)
+        self.age_panel.add(label)
+        self.age_panel.add(self.age)
+        self.tools_panel.add(self.age_panel)
+
+
         save_button = Button(self.tools_panel, text = "Save annotations", command = save_annotation_cmd)
         self.tools_panel.add(save_button)
 
@@ -84,7 +101,7 @@ class Gui:
             self.path_label.configure(text = file_path)
         else:
             self.image.image = ""
-            self.path_label.configure(text = Gui.LABEL_EMPTY_PATH)
+            self.path_label.configure(text = LABEL_EMPTY_PATH)
 
     def play_images_seq(self):     
         self.stop_current_vid = False   
@@ -93,7 +110,7 @@ class Gui:
             self.pause_image_flag = False
             self.image.after(200, self.visualize)
         else:
-            if file_path != Gui.LABEL_EMPTY_PATH:
+            if file_path != LABEL_EMPTY_PATH:
                 data = None
                 with open(file_path) as json_file:
                     data = json.load(json_file)       
@@ -101,10 +118,15 @@ class Gui:
                 self.left_images_number = len(self.json_data["images"])
                 self.visualize()
     
+    def hide_anotations(self):
+        self.left_images_number += 1
+        self.show_anotations = not self.show_anotations
+        self.visualize()
+
     def click_event(self, eventorigin):
         #Multipliers to get the current rectangle for the resized image
-        x_multiplier = 800/self.current_image_shape[1]
-        y_multiplier = 450/self.current_image_shape[0]
+        x_multiplier = IMAGE_WIDTH/self.current_image_shape[1]
+        y_multiplier = IMAGE_HEIGHT/self.current_image_shape[0]
 
         #Point
         xP = eventorigin.x
@@ -152,31 +174,47 @@ class Gui:
         
         #Update interface
         if 'other' in self.json_data:
+            genders={
+                None:0,
+                'M': 1,
+                'F': 2,
+            } 
             other_json = self.json_data['other']
             track_id_value = list(filter(lambda f: (f["track_id"] == self.person_selected_id), other_json))
             print(track_id_value)
             if track_id_value != []:
-                gender = 1 if track_id_value[0]['gender'] == 'M' else 2
+                gender = genders[track_id_value[0]['gender']]
                 self.gender_selected.set(gender)
+                self.age.delete(0,END)
+                self.age.insert(0, str(track_id_value[0]['age_group']))
             else:
                 self.gender_selected.set(0)
+                self.age.delete(0,END)
+                self.age.insert(0, "")
+            
     
+
     def save_annotation(self):
         if self.person_selected_id != None and self.gender_selected.get() != 0:
-            print(self.gender_selected.get())
-            gender = 'M' if self.gender_selected.get() == 1 else 'F'
-            print(gender)
+            genders={
+                0:None,
+                1:'M',
+                2:'F',
+            } 
+            gender = genders[self.gender_selected.get()]            
+            age = int(self.age.get()) if self.age.get().isdigit() else None
+            age = age if age != None and age >=1 and age <= 99 else None
+
             if 'other' in self.json_data:
                 other_json = self.json_data['other']
-                if list(filter(lambda f: (f["track_id"] == self.person_selected_id), other_json)):
+                if list(filter(lambda f: (f["track_id"] == self.person_selected_id), other_json)):                   
                     annotations_except_this = list(filter(lambda f: (f["track_id"] != self.person_selected_id), other_json))
                     annotations_except_this.append({
                         'track_id': self.person_selected_id,
                         'gender' : gender,
-                        'age_group': None
+                        'age_group': age
                     })
                     self.json_data['other'] = annotations_except_this
-                    print('Already in')
                 else:
                     element_list = self.json_data['other']
                     if type(element_list) is dict:
@@ -184,7 +222,7 @@ class Gui:
                     element_list.append({
                         'track_id': self.person_selected_id,
                         'gender' : gender,
-                        'age_group': None
+                        'age_group': age
                     })
                     self.json_data['other'] = element_list
                     #print(self.json_data['other'])
@@ -192,7 +230,7 @@ class Gui:
                 self.json_data['other'] = [{
                     'track_id': self.person_selected_id,
                     'gender' : gender,
-                    'age_group': None
+                    'age_group': age
                 }]
             self.left_images_number += 1
             self.visualize()
@@ -211,14 +249,16 @@ class Gui:
             if self.left_images_number > 0:
                 #print(self.left_images_number)
                 index = len(self.json_data["images"]) - self.left_images_number - 1
-                image = self.json_data["images"][index]
-                img, current_annotations = ImageAnnotator.annotate_image(image, self.json_data)
-                self.current_image_shape = img.shape
-                
+                img = self.json_data["images"][index]
+                if self.show_anotations:
+                    img, current_annotations = ImageAnnotator.annotate_image(img, self.json_data)
+                    self.current_annotations = current_annotations                
+                    self.current_image_shape = img.shape
+                else:
+                    img = cv2.imread(img["file_name"])
+                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
                 #Resize
-                img = imutils.resize(img, width=800, height=450)
-                
-                self.current_annotations = current_annotations
+                img = imutils.resize(img, width=IMAGE_WIDTH, height=IMAGE_HEIGHT)
                 im = Image.fromarray(img)            
                 img = ImageTk.PhotoImage(image=im)
                 self.image.create_image(0, 0, image=img, anchor=NW)

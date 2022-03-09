@@ -73,6 +73,7 @@ def annotate_image(image, json_data):
             thickness,
             lineType)
         
+        #Write gender
         try:
             track_id_value = list(filter(lambda f: (f["track_id"] == current_annotation["track_id"]), other_info))
             if track_id_value != []:
@@ -87,8 +88,22 @@ def annotate_image(image, json_data):
                     lineType)
         except:
             print("Doesn't have gender")
-
-        
+        #Write age-group
+        try:
+            track_id_value = list(filter(lambda f: (f["track_id"] == current_annotation["track_id"]), other_info))
+            if track_id_value != []:
+                bottomLeftCornerOfText = (x_head, y_head- 30)
+                gender = track_id_value[0]['age_group']
+                if gender != None:
+                    cv2.putText(img,"Age:" + str(gender), 
+                        bottomLeftCornerOfText, 
+                        font, 
+                        fontScale,
+                        (242, 218, 94),
+                        thickness,
+                        lineType)
+        except:
+            print("Doesn't have gender")
 
     img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
     return img, anotations_of_current_image
