@@ -1,0 +1,8 @@
+#OpenCv
+#Tkinter
+#NumPy
+#sklearn
+#pillow
+#imutils
+#matplotlib
+#scipy
