@@ -1,3 +1,4 @@
+from distutils.command.config import config
 from tkinter import *
 from tkinter import filedialog
 from tkinter import Tk, Label, Button
@@ -15,9 +16,10 @@ import  utilities.image_annotator as image_annotator
 from enums.AgeGroup import AgeGroup
 from enums.Gender import Gender
 
+from configparser import ConfigParser
+
 IMAGE_WIDTH = 1400
 IMAGE_HEIGHT = 790
-LABEL_EMPTY_PATH = "Empty path"
 
 class Gui:
     
@@ -25,8 +27,13 @@ class Gui:
         self.master = master
         #Disable resize
         self.master.resizable(False, False)
-        master.title("PoseTrackAnnotatorTool")
+        master.title('PoseTrackAnnotatorTool')
         
+        #LOAD CONFIGURATIONS
+        self.config = ConfigParser()
+        self.config.read('config.ini')
+        annotation_path = self.config['paths']['annotation_path']
+
         # INITIALITE OBJECT VARIABLES
         self.json_data = None
         self.left_images_number = 0
@@ -38,17 +45,35 @@ class Gui:
         self.age_group_selected = IntVar(master)
         self.person_selected_id = None
         self.show_anotations = True
-         
+
         # REGISTER BUTTONS COMMANDS
         select_file_cmd = master.register(self.select_file)
+        select_default_data_path = master.register(self.select_default_data_path)
         play_images_seq_cmd = master.register(self.play_images_seq)
         pause_images_seq_cmd = master.register(self.pause_images_seq)
         save_annotation_cmd = master.register(self.save_annotation)
         hide_anotations_cmd = master.register(self.hide_anotations)
 
         # BUILD INTERFACE
-        self.visualize_button = Button(master, text = "Select an annotations file", command = select_file_cmd)
-        self.path_label = Label(root, text = LABEL_EMPTY_PATH)      
+        #   => Menu
+        self.menu = Menu(self.master)
+        master.config(menu = self.menu)
+        #       => File 
+        self.file_menu = Menu(self.menu, tearoff=0)
+        self.file_menu.add_command(label="Open Annotation", command= select_file_cmd)
+        self.file_menu.add_separator()
+        self.file_menu.add_command(label = "Exit", command = exit)
+        
+        #       => Settings 
+        self.settings_menu = Menu(self.menu, tearoff=0)
+        self.settings_menu.add_command(label="Change Default Images Path", command= select_default_data_path)
+
+        self.menu.add_cascade(label = "File", menu=self.file_menu)
+        self.menu.add_cascade(label = "Settings", menu=self.settings_menu)
+
+    
+        
+        self.path_label = Label(root, text = annotation_path)      
         #   => IMAGE PANEL
         #self.image_panel = PanedWindow(bd = 0, bg="white", width= 800, height=450)
         self.image = Canvas(master, width = IMAGE_WIDTH, height=IMAGE_HEIGHT)
@@ -97,14 +122,12 @@ class Gui:
         self.tools_panel.add(save_button)
 
         # LAYOUT
-        self.visualize_button.grid(column=0, row=0)
-        self.path_label.grid(column=0, row=1)
-        self.image.grid(column=0, row=2)
+        self.path_label.grid(column=0, row=0)
         #
-        self.image.grid(column=0, row=2)
+        self.image.grid(column=0, row=1)
         #self.image_panel.grid(column=0, row=2)
         #   => LAYOUT TOOLS PANEL
-        self.tools_panel.grid(column=1, row=2)
+        self.tools_panel.grid(column=1, row=1)
     
     def select_file(self):
         file_path = filedialog.askopenfilename(filetypes = [
@@ -113,9 +136,21 @@ class Gui:
         if len(file_path) > 0:
             self.image.image = ""
             self.path_label.configure(text = file_path)
+            self.config.set('paths', 'annotation_path', file_path)
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
+                
         else:
             self.image.image = ""
-            self.path_label.configure(text = LABEL_EMPTY_PATH)
+            self.path_label.configure(text = self.config['paths']['annotation_path'])
+
+    def select_default_data_path(self):
+        directory_path = filedialog.askdirectory(title="Select directory")
+        self.stop_current_vid = True
+        if len(directory_path) > 0:
+            self.config.set('paths', 'image_path', directory_path)
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
 
     def play_images_seq(self):
         self.stop_current_vid = False   
@@ -124,7 +159,7 @@ class Gui:
             self.pause_image_flag = False
             self.image.after(200, self.visualize)
         else:
-            if file_path != LABEL_EMPTY_PATH:
+            if file_path != 'Empty':
                 data = None
                 with open(file_path) as json_file:
                     data = json.load(json_file)       
@@ -252,7 +287,8 @@ class Gui:
                 index = len(self.json_data["images"]) - self.left_images_number - 1
                 img = self.json_data["images"][index]
                 if self.show_anotations:
-                    img, current_annotations = image_annotator.annotate_image(img, self.json_data)
+                    images_directory_path = self.config['paths']['image_path']
+                    img, current_annotations = image_annotator.annotate_image(img, self.json_data,images_directory_path)
                     self.current_annotations = current_annotations                
                     self.current_image_shape = img.shape
                 else:

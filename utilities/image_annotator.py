@@ -1,13 +1,28 @@
 #Important link to understand Posetrack dataset https://medium.com/@anuj_shah/posetrack-data-set-summary-9cf61fc6f44e
+from unittest import result
 import cv2
 
-def annotate_image(image, json_data):    
+
+def build_path(images_directory_path, image_path):
+    images_directory_path_as_array = images_directory_path.split('\\')
+    image_path_as_array = image_path.split('\\')
+    for part_of_path in image_path_as_array:
+        if part_of_path not in images_directory_path_as_array:
+            images_directory_path_as_array.append(part_of_path)
+    images_directory_path_as_array = [part_of_path for part_of_path in images_directory_path_as_array if part_of_path.strip() != '']
+    return "\\".join(images_directory_path_as_array)
+
+#assert build_path("C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\", "\\images\\img1.jpg") == "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\img1.jpg"
+#assert build_path("C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\", "\\img1.jpg") == "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\img1.jpg"
+
+def annotate_image(image, json_data, images_directory_path):    
     color_palette = [(154,205,50),(138,43,226),(233,150,122),(0,255,255),(100,149,237),(0,0,128),(139,0,139),(255,250,205),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(154,205,50),(138,43,226),(233,150,122),(0,255,255),(100,149,237),(0,0,128),(139,0,139),(255,250,205),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(205,133,63),(240,255,255)]
 
     anotations = json_data["annotations"]
     categories = json_data["categories"][0]
     skeleton = categories["skeleton"]
-    path = "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\" + image["file_name"]
+
+    path = build_path(images_directory_path.replace("/", "\\"), image["file_name"].replace("/", "\\"))
     #path = image["file_name"]
     img = cv2.imread(path)
 
@@ -42,7 +57,7 @@ def annotate_image(image, json_data):
         except:
             print("Doesn't have skeleton")
 
-        try:
+        """try:
             #head box
             box_points = current_annotation["bbox_head"]
             x_head = box_points[0]
@@ -51,7 +66,7 @@ def annotate_image(image, json_data):
             end_y_head = y_head + box_points[3]
             img = cv2.rectangle(img, (x_head, y_head), (end_x_head, end_y_head), current_color, 2)
         except:
-            print("Doesn't have head box")
+            print("Doesn't have head box")"""
 
         #body box
         try:

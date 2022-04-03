@@ -8,7 +8,9 @@ from utilities.deepsort import *
 from tkinter import filedialog
 import json
 import utilities.utils as utils
+import  utilities.image_annotator as image_annotator
 
+import re
 def get_gt(images, annotations, frame_id):
     image = images[frame_id]
     annotations = json_data['annotations']
@@ -68,7 +70,8 @@ json_data_ids = {
 json_data_ids["annotations"] = []
 
 for frame_id in range(0, total_frames): 
-    path = "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\" + images[frame_id]['file_name']
+    path = re.sub('/annotations/.*','/images/', filename)
+    path = image_annotator.build_path(path.replace('/', '\\'), images[frame_id]['file_name'].replace('/', '\\'))
     #path = images[frame_id]['file_name']
     print(frame_id)        
     frame = cv2.imread(path)
@@ -119,6 +122,7 @@ for frame_id in range(0, total_frames):
     
     cv2.imshow('frame',frame)
     #out.write(frame)
+    cv2.waitKey(20)
     if cv2.waitKey(20) & 0xFF == ord('q'):
         break
 
