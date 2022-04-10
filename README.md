@@ -5,6 +5,7 @@
     - ~~First see what are the best groups that divide peoples~~
 - Add action anotator menu
     Maybe some ideas from here: https://www.youtube.com/watch?v=I5Aq2asP83Y
+    https://boleehci.com/wp-content/uploads/2019/12/lee_Ubicomp_2019.pdf
 - Show how many skeletons are, and how many are fully labeled
 
 

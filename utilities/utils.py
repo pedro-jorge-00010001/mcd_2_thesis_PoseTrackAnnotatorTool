@@ -37,3 +37,11 @@ def get_closest_rectangle_to(rectangle, vector_of_rectangles_to_compare, maximum
         #current_min_dst_rect = rectangle
         current_min_dst_rect = None
     return current_min_dst_rect 
+
+def get_number_to_string(number):
+    if int(number) < 10:
+        return '0' + str(number)
+    return str(number)
+
+assert get_number_to_string(1) == '01'
+assert get_number_to_string(21) == '21'

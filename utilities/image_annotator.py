@@ -2,7 +2,7 @@
 from unittest import result
 import cv2
 
-
+import numpy as np
 def build_path(images_directory_path, image_path):
     images_directory_path_as_array = images_directory_path.split('\\')
     image_path_as_array = image_path.split('\\')
@@ -25,7 +25,8 @@ def annotate_image(image, json_data, images_directory_path):
     path = build_path(images_directory_path.replace("/", "\\"), image["file_name"].replace("/", "\\"))
     #path = image["file_name"]
     img = cv2.imread(path)
-
+    
+    #img =  np.zeros(img.shape, np.uint8)
     anotations_of_current_image = list(filter(lambda f: (f["image_id"] == image["id"]), anotations))
     other_info = []
     if 'other' in json_data:
@@ -57,7 +58,7 @@ def annotate_image(image, json_data, images_directory_path):
         except:
             print("Doesn't have skeleton")
 
-        """try:
+        try:
             #head box
             box_points = current_annotation["bbox_head"]
             x_head = box_points[0]
@@ -66,7 +67,7 @@ def annotate_image(image, json_data, images_directory_path):
             end_y_head = y_head + box_points[3]
             img = cv2.rectangle(img, (x_head, y_head), (end_x_head, end_y_head), current_color, 2)
         except:
-            print("Doesn't have head box")"""
+            print("Doesn't have head box")
 
         #body box
         try:

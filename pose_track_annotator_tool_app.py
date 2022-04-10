@@ -1,9 +1,11 @@
+#https://ttkwidgets.readthedocs.io/en/sphinx_doc/_modules/ttkwidgets/timeline.html#TimeLine.create_scroll_region
 from distutils.command.config import config
 from tkinter import *
 from tkinter import filedialog
 from tkinter import Tk, Label, Button
 from tkinter import messagebox as msgb
 from tkinter import IntVar
+from tkinter import colorchooser
 
 from PIL import Image
 from PIL import ImageTk
@@ -17,6 +19,11 @@ from enums.AgeGroup import AgeGroup
 from enums.Gender import Gender
 
 from configparser import ConfigParser
+from ttkwidgets import TimeLine
+from utilities.utils import get_number_to_string
+import string
+import random
+from colormap import rgb2hex
 
 IMAGE_WIDTH = 1400
 IMAGE_HEIGHT = 790
@@ -25,16 +32,16 @@ class Gui:
     
     def __init__(self, master):
         self.master = master
-        #Disable resize
+        # disable resize
         self.master.resizable(False, False)
         master.title('PoseTrackAnnotatorTool')
         
-        #LOAD CONFIGURATIONS
+        # load configurations
         self.config = ConfigParser()
         self.config.read('config.ini')
         annotation_path = self.config['paths']['annotation_path']
 
-        # INITIALITE OBJECT VARIABLES
+        # initialize object variables
         self.json_data = None
         self.left_images_number = 0
         self.stop_current_vid = False
@@ -53,6 +60,7 @@ class Gui:
         pause_images_seq_cmd = master.register(self.pause_images_seq)
         save_annotation_cmd = master.register(self.save_annotation)
         hide_anotations_cmd = master.register(self.hide_anotations)
+        add_action_event = master.register(self.add_action_event)
 
         # BUILD INTERFACE
         #   => Menu
@@ -70,8 +78,6 @@ class Gui:
 
         self.menu.add_cascade(label = "File", menu=self.file_menu)
         self.menu.add_cascade(label = "Settings", menu=self.settings_menu)
-
-    
         
         self.path_label = Label(root, text = annotation_path)      
         #   => IMAGE PANEL
@@ -102,7 +108,7 @@ class Gui:
         self.gender_panel.add(r1)
         self.gender_panel.add(r2)
         self.tools_panel.add(self.gender_panel)
-        #       =>AGE PANEL
+        #       =>age panel
         self.age_panel = PanedWindow(bd = 5,orient= VERTICAL ,width= 100, height=150)
         label = Label(root, text = "Age:")
         a1 = Radiobutton(root, text="Child (00-14 years)", value=1, variable=self.age_group_selected)
@@ -121,6 +127,17 @@ class Gui:
         save_button = Button(self.tools_panel, text = "Save annotations", command = save_annotation_cmd, height=150)
         self.tools_panel.add(save_button)
 
+        #   => timeline
+        self.timeline = TimeLine(
+            master = root
+        )
+        self.timeline.draw_timeline()
+        # =>  timeline menu
+        
+        self.timeline._canvas_categories.bind_all()
+        self.timeline_menu = Menu(self.master, tearoff=False)
+        self.timeline_menu.add_command(label="Some Action", command=add_action_event)
+        
         # LAYOUT
         self.path_label.grid(column=0, row=0)
         #
@@ -128,18 +145,37 @@ class Gui:
         #self.image_panel.grid(column=0, row=2)
         #   => LAYOUT TOOLS PANEL
         self.tools_panel.grid(column=1, row=1)
+        self.timeline.grid(row=2)
+        self._load_data(annotation_path)
+    
+    def add_action_event(self):
+        print("id selected",self.action_id_selection)
+        try:
+            frame_number = round(float(self.timeline._time_label.cget("text")))
+        except:
+             frame_number = 0
+        self.timeline.tag_configure(get_number_to_string(self.action_id_selection), hover_border=2)   
+        # r,g,b = (round(random.random()*255), round(random.random()*255), round(random.random()*255)) 
+        # hex = rgb2hex(r,g,b)
+        self.timeline.create_marker(get_number_to_string(self.action_id_selection), frame_number, frame_number+2,
+            tags=(get_number_to_string(self.action_id_selection),), text="Do nothing", background= "#5fedce" ,border = 1)
+        
+
+    def move_time_pointer_event(self, event):
+        # stop video when moving the pointer
+        self.pause_image_flag = True
+        # get time pointer number
+        frame_number = round(float(self.timeline._time_label.cget("text")))
+        # update images left
+        self.left_images_number = len(self.json_data["images"]) - frame_number -1 
+        self._set_image(frame_number)
     
     def select_file(self):
-        file_path = filedialog.askopenfilename(filetypes = [
+        annotation_path = filedialog.askopenfilename(filetypes = [
             ("Json files", ".json")])
         self.stop_current_vid = True
-        if len(file_path) > 0:
-            self.image.image = ""
-            self.path_label.configure(text = file_path)
-            self.config.set('paths', 'annotation_path', file_path)
-            with open('config.ini', 'w') as configfile:
-                self.config.write(configfile)
-                
+        if len(annotation_path) > 0:
+            self._load_data(annotation_path)
         else:
             self.image.image = ""
             self.path_label.configure(text = self.config['paths']['annotation_path'])
@@ -283,25 +319,143 @@ class Gui:
         self.left_images_number -= 1
         if self.json_data != None and self.stop_current_vid != True:
             if self.left_images_number > 0:
-                #print(self.left_images_number)
-                index = len(self.json_data["images"]) - self.left_images_number - 1
-                img = self.json_data["images"][index]
-                if self.show_anotations:
-                    images_directory_path = self.config['paths']['image_path']
-                    img, current_annotations = image_annotator.annotate_image(img, self.json_data,images_directory_path)
-                    self.current_annotations = current_annotations                
-                    self.current_image_shape = img.shape
-                else:
-                    img = cv2.imread(img["file_name"])
-                    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-                #Resize
-                img = imutils.resize(img, width=IMAGE_WIDTH, height=IMAGE_HEIGHT)
-                im = Image.fromarray(img)            
-                img = ImageTk.PhotoImage(image=im)
-                self.image.create_image(0, 0, image=img, anchor=NW)
-                self.image.image = img
+                image_number = len(self.json_data["images"]) - self.left_images_number - 1
+                self._set_image(image_number)
                 if self.pause_image_flag != True:                
                     self.image.after(300 - self.slicer_button.get(), self.visualize)
+
+    def _load_data(self , annotation_path):
+        self.path_label.configure(text = annotation_path)
+        self.config.set('paths', 'annotation_path', annotation_path)
+        with open('config.ini', 'w') as configfile:
+            self.config.write(configfile)
+        
+        with open(annotation_path) as json_file:
+                data = json.load(json_file)       
+        self.json_data = data
+        self.left_images_number = len(self.json_data["images"])
+        
+        annotations = self.json_data["annotations"]
+        annotations_track_ids = [x['track_id'] for x in annotations]
+        persons_len = max(annotations_track_ids) + 1
+
+        self._set_image(0)
+
+        # update timeline
+        vocabulary = ['A',]
+        self.timeline.destroy()
+        self.timeline.__init__(master = root, 
+            height=100, width = 1300, 
+            extend=True,  zoom_enabled = False, 
+            start = 0.0, 
+            resolution= 0.022, tick_resolution = 1.0,
+            unit = 's',
+            categories={get_number_to_string(key): {"text": "Person-{}".format( key)} for key in range(0, persons_len)},
+            finish = float(self.left_images_number-1), snap_margin = 2
+        )
+        
+        self.timeline.draw_timeline()   
+        self.timeline._canvas_ticks.bind("<ButtonRelease-1>", self.move_time_pointer_event)
+        self.timeline._timeline.bind("<ButtonPress-3>", self.timeline_rclick_event)
+        self.timeline.grid(row=2)
+        self.timeline._timeline.bind("<Double-Button-1>", self.double_click_event)
+        # self.timeline.config(menu = menu)
+    
+    def double_click_event(self, event):
+        def click_cancel():
+            self.timeline.update_marker(iid, background=tag_brackground)
+            pop.destroy()
+
+        def click_ok():
+            start = float(round(float(selected_tag['start'])))
+            finish = float(round(float(selected_tag['start']))) + float(frame_lenght_label.get())
+            if start == finish:
+                finish = start + 1
+            
+            self.timeline.update_marker(iid,text = name_label.get(), 
+                start = start, finish = finish, 
+                background = button_color.cget('bg'))
+            pop.destroy()
+
+        def pick_color():
+            color = colorchooser.askcolor()[1]
+            button_color.config(bg=color)
+            pop.deiconify()
+
+        def delete_marker():
+            self.timeline.delete_marker(iid)
+            self.timeline._active = None
+            pop.destroy()
+
+        self.timeline.update_active()
+        iid = self.timeline.current_iid
+        if iid is None:
+            return
+        
+        selected_tag = self.timeline._markers[iid]
+        tag_brackground = selected_tag['background']
+        self.timeline.update_marker(iid, background="gray")
+        
+        pop = Toplevel(self.master)
+        pop.title("Annotation: " + selected_tag['text'])
+        pop.geometry("%dx%d+%d+%d" % (250, 100, event.x_root, event.y_root))
+        pop.tkraise(self.timeline)
+        pop.wm_resizable(False,False)
+        # Edit name
+        Label(pop, text="Edit name").grid(row=0, column=0)
+        name_label = StringVar(pop)
+        name_label.set(selected_tag['text'])
+        Entry(pop, textvariable = name_label, width=20).grid(row=0, column=1)
+
+        # Edit frames lenght
+        Label(pop, text="Frames lenght").grid(row=1, column=0)
+        frame_lenght_label = StringVar(pop)
+        frame_lenght_label.set(str(int(round(float(selected_tag['finish']))-float(selected_tag['start']))))
+        Entry(pop, textvariable = frame_lenght_label, width=20).grid(row=1, column=1)
+        
+        # Edit color
+        label_color = Label(pop, text="Color:")
+        label_color.grid(row=2, column=0, sticky='nesw')
+
+        #Buttons
+        button_color = Button(pop, text = "", command= pick_color,bg=tag_brackground, bd=0)
+        button_color.grid(row=2, column=1,sticky='nesw')
+        button_ok = Button(pop, text="Ok", command = click_ok, bd=1)
+        button_ok.grid(row=3, column=0,sticky='nesw')
+
+        button_remove = Button(pop, text="Remove", command = delete_marker, bd=1)
+        button_remove.grid(row=3, column=1,sticky='nesw')
+        
+        button_cancel = Button(pop, text="Cancel", command= click_cancel, bd=1)
+        button_cancel.grid(row=3, column=2,sticky='nesw')
+
+
+    def timeline_rclick_event(self, event):       
+        self.action_id_selection = event.y//20
+        self.timeline_menu.tk_popup(event.x_root,event.y_root )
+
+    def _set_image(self, image_number):
+        self.timeline.set_time(float(image_number))
+        try:
+            self.timeline._time_label['text'] = str(image_number)
+        except: 
+            pass
+        # get image
+        img = self.json_data["images"][image_number]
+        if self.show_anotations:
+            images_directory_path = self.config['paths']['image_path']
+            img, current_annotations = image_annotator.annotate_image(img, self.json_data,images_directory_path)
+            self.current_annotations = current_annotations                
+            self.current_image_shape = img.shape
+        else:
+            img = cv2.imread(img["file_name"])
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        # resize
+        img = imutils.resize(img, width=IMAGE_WIDTH, height=IMAGE_HEIGHT)
+        im = Image.fromarray(img)            
+        img = ImageTk.PhotoImage(image=im)
+        self.image.create_image(0, 0, image=img, anchor=NW)
+        self.image.image = img
 
 root = Tk()
 my_gui = Gui(root)
