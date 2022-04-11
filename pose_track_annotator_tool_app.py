@@ -20,10 +20,7 @@ from enums.Gender import Gender
 
 from configparser import ConfigParser
 from ttkwidgets import TimeLine
-from utilities.utils import get_number_to_string
-import string
-import random
-from colormap import rgb2hex
+from utilities.utils import get_number_to_string    
 
 IMAGE_WIDTH = 1400
 IMAGE_HEIGHT = 790
@@ -59,7 +56,7 @@ class Gui:
         play_images_seq_cmd = master.register(self.play_images_seq)
         pause_images_seq_cmd = master.register(self.pause_images_seq)
         save_annotation_cmd = master.register(self.save_annotation)
-        hide_anotations_cmd = master.register(self.hide_anotations)
+        hide_annotations_cmd = master.register(self.hide_annotations)
         add_action_event = master.register(self.add_action_event)
 
         # BUILD INTERFACE
@@ -90,7 +87,7 @@ class Gui:
         self.tools_panel = PanedWindow(bd = 4,orient= VERTICAL, width= 200, height=450)
         play_button = Button(self.tools_panel, text = "Play", command = play_images_seq_cmd)
         stop_button = Button(self.tools_panel, text = "Pause", command = pause_images_seq_cmd)
-        hide_button = Button(self.tools_panel, text = "Hide/Show anotations", command = hide_anotations_cmd)
+        hide_button = Button(self.tools_panel, text = "Hide/Show anotations", command = hide_annotations_cmd)
         self.slicer_button = Scale(master, from_=50, to=300, resolution=1, orient=HORIZONTAL, showvalue=False)
         self.slicer_button.set(167)
         self.person_selected_label = Label(root, text = "Person Id: " + str(self.person_selected_id))
@@ -151,14 +148,14 @@ class Gui:
     def add_action_event(self):
         print("id selected",self.action_id_selection)
         try:
-            frame_number = round(float(self.timeline._time_label.cget("text")))
+            frame_number = float(TimeLine.get_time_string(self.timeline.time, self.timeline._unit))
         except:
              frame_number = 0
         self.timeline.tag_configure(get_number_to_string(self.action_id_selection), hover_border=2)   
         # r,g,b = (round(random.random()*255), round(random.random()*255), round(random.random()*255)) 
         # hex = rgb2hex(r,g,b)
         self.timeline.create_marker(get_number_to_string(self.action_id_selection), frame_number, frame_number+2,
-            tags=(get_number_to_string(self.action_id_selection),), text="Do nothing", background= "#5fedce" ,border = 1)
+            tags=(get_number_to_string(self.action_id_selection),), text="nothing", background= "#5fedce" ,border = 1)
         
 
     def move_time_pointer_event(self, event):
@@ -203,7 +200,7 @@ class Gui:
                 self.left_images_number = len(self.json_data["images"])
                 self.visualize()
     
-    def hide_anotations(self):
+    def hide_annotations(self):
         self.left_images_number += 1
         self.show_anotations = not self.show_anotations
         self.visualize()
@@ -258,8 +255,8 @@ class Gui:
         self.person_selected_label.config(text ="Person Id: " + str(self.person_selected_id))
         
         #Update interface
-        if 'other' in self.json_data:
-            other_json = self.json_data['other']
+        if 'characteristics' in self.json_data:
+            other_json = self.json_data['characteristics']
             track_id_value = list(filter(lambda f: (f["track_id"] == self.person_selected_id), other_json))
             if track_id_value != []:
                 gender = Gender[track_id_value[0]['gender']].value
@@ -273,43 +270,56 @@ class Gui:
     
 
     def save_annotation(self):
-        if self.person_selected_id != None and self.gender_selected.get() != 0 and self.age_group_selected.get() != 0:
-            gender = Gender(self.gender_selected.get()).name          
-            age = AgeGroup(self.age_group_selected.get()).name
+        markers = self.timeline.markers
+        self.json_data['actions'] = []
+        for key, value in markers.items():
+            diff_len = round(float(value['finish']) -float(value['start']))
+            start = int(round(float(value['start'])))
+            end = int(start + diff_len)
 
-            if 'other' in self.json_data:
-                other_json = self.json_data['other']
-                if list(filter(lambda f: (f["track_id"] == self.person_selected_id), other_json)):                   
-                    annotations_except_this = list(filter(lambda f: (f["track_id"] != self.person_selected_id), other_json))
-                    annotations_except_this.append({
-                        'track_id': self.person_selected_id,
-                        'gender' : gender,
-                        'age_group': age
-                    })
-                    self.json_data['other'] = annotations_except_this
-                else:
-                    element_list = self.json_data['other']
-                    if type(element_list) is dict:
-                        element_list = [element_list]
-                    element_list.append({
-                        'track_id': self.person_selected_id,
-                        'gender' : gender,
-                        'age_group': age
-                    })  
-                    self.json_data['other'] = element_list
-                    #print(self.json_data['other'])
+            value_dict = {
+                        "track_id": int(value['category']),
+                        "action_name": value['text'],
+                        "start_frame": start,
+                        "finish_frame": end,
+                        "start_frame_id": 'None for now',
+                        "finish_frame_id": 'None for now',
+                        "color" : value['background']
+            }
+            self._update_json_info('actions', value_dict, update_element_if_in = False)
+
+        if self.person_selected_id != None:     
+            if self.gender_selected.get() and self.age_group_selected.get():
+                gender = Gender(self.gender_selected.get()).name          
+                age = AgeGroup(self.age_group_selected.get()).name
+                value_dict = {
+                            'track_id': self.person_selected_id,
+                            'gender' : gender,
+                            'age_group': age
+                        }
+                self._update_json_info('characteristics', value_dict)
+
+        self.left_images_number += 1
+        self.visualize()
+        with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
+            json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+        
+
+    def _update_json_info(self, topic, value_dict, update_element_if_in = True):
+        if topic in self.json_data:
+            element_list = self.json_data[topic]
+
+            if list(filter(lambda f: (f["track_id"] == value_dict["track_id"]), element_list)) and update_element_if_in:   
+                annotations_except_this = list(filter(lambda f: (f["track_id"] != value_dict["track_id"]), element_list))
+                annotations_except_this.append(value_dict)
+                self.json_data[topic] = annotations_except_this
             else:
-                self.json_data['other'] = [{
-                    'track_id': self.person_selected_id,
-                    'gender' : gender,
-                    'age_group': age
-                }]
-            self.left_images_number += 1
-            self.visualize()
-            with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
-                json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+                if type(element_list) is dict:
+                    element_list = [element_list]
+                element_list.append(value_dict)
+                self.json_data[topic] = element_list
         else:
-            msgb.showinfo("Alert", "Please select a person, by clicking over it\nOr select a gender or age-group")
+            self.json_data[topic] = [value_dict]
 
     def pause_images_seq(self):
         self.pause_image_flag = True
@@ -342,7 +352,6 @@ class Gui:
         self._set_image(0)
 
         # update timeline
-        vocabulary = ['A',]
         self.timeline.destroy()
         self.timeline.__init__(master = root, 
             height=100, width = 1300, 
@@ -359,8 +368,19 @@ class Gui:
         self.timeline._timeline.bind("<ButtonPress-3>", self.timeline_rclick_event)
         self.timeline.grid(row=2)
         self.timeline._timeline.bind("<Double-Button-1>", self.double_click_event)
-        # self.timeline.config(menu = menu)
+        
+        
+        #Load timeline data
+        try:
+            for element in self.json_data["actions"]:
+                self.timeline.tag_configure(get_number_to_string(element["track_id"]), hover_border=2)   
+                self.timeline.create_marker(get_number_to_string(element["track_id"]), element["start_frame"], element["finish_frame"],
+                        tags=(get_number_to_string(element["track_id"]),), text = element["action_name"], background= element["color"] ,border = 1)
+        except:
+            print("No actions to load")
+
     
+ 
     def double_click_event(self, event):
         def click_cancel():
             self.timeline.update_marker(iid, background=tag_brackground)
@@ -410,7 +430,7 @@ class Gui:
         # Edit frames lenght
         Label(pop, text="Frames lenght").grid(row=1, column=0)
         frame_lenght_label = StringVar(pop)
-        frame_lenght_label.set(str(int(round(float(selected_tag['finish']))-float(selected_tag['start']))))
+        frame_lenght_label.set(str(int(round(float(selected_tag['finish'])-float(selected_tag['start'])))))
         Entry(pop, textvariable = frame_lenght_label, width=20).grid(row=1, column=1)
         
         # Edit color
@@ -435,6 +455,8 @@ class Gui:
         self.timeline_menu.tk_popup(event.x_root,event.y_root )
 
     def _set_image(self, image_number):
+        if image_number < 0:
+            image_number = 0
         self.timeline.set_time(float(image_number))
         try:
             self.timeline._time_label['text'] = str(image_number)
@@ -444,11 +466,12 @@ class Gui:
         img = self.json_data["images"][image_number]
         if self.show_anotations:
             images_directory_path = self.config['paths']['image_path']
-            img, current_annotations = image_annotator.annotate_image(img, self.json_data,images_directory_path)
+            img, current_annotations = image_annotator.annotate_image(img,image_number, self.json_data,images_directory_path)
             self.current_annotations = current_annotations                
             self.current_image_shape = img.shape
         else:
-            img = cv2.imread(img["file_name"])
+            images_directory_path = self.config['paths']['image_path']           
+            img = cv2.imread(image_annotator.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         # resize
         img = imutils.resize(img, width=IMAGE_WIDTH, height=IMAGE_HEIGHT)
