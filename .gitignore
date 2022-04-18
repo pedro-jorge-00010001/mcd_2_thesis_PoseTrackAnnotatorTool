@@ -1,4 +1,6 @@
 #/data/
 __pycache__/
 /libraries/openpose/
+/libraries/yolo/
 /.vscode/
+*.pt

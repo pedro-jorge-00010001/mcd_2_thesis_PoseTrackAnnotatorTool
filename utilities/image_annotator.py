@@ -1,10 +1,10 @@
 #Important link to understand Posetrack dataset https://medium.com/@anuj_shah/posetrack-data-set-summary-9cf61fc6f44e
-from unittest import result
 import cv2
 from PIL import ImageColor
 from cv2 import exp
 
 import numpy as np
+
 def build_path(images_directory_path, image_path):
     images_directory_path_as_array = images_directory_path.split('\\')
     image_path_as_array = image_path.split('\\')
@@ -18,14 +18,18 @@ def build_path(images_directory_path, image_path):
 #assert build_path("C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\", "\\img1.jpg") == "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\img1.jpg"
 
 
-def draw_box(img, box_points, color = (0,0,0)):
+def draw_box(img, box_points, color = (0,0,0), wh_format = False):
     #Convert to intergers
     box_points = [ int(x) for x in box_points ]
     try:
         x_head = box_points[0]
         y_head = box_points[1]
-        end_x_head = x_head + box_points[2]
-        end_y_head = y_head + box_points[3]
+        if wh_format:
+            end_x_head = box_points[2]
+            end_y_head = box_points[3]
+        else:
+            end_x_head = x_head + box_points[2]
+            end_y_head = y_head + box_points[3]
         img = cv2.rectangle(img, (x_head, y_head), (end_x_head, end_y_head), color, 2)
     except:
         print("Can't draw the box")
@@ -106,17 +110,19 @@ def annotate_image(image, image_number, json_data, images_directory_path):
             print("Doesn't have bbox_head")
 
         #body box
+        bbox_points = None
         try:  
             bbox_points = current_annotation["bbox"]
             img = draw_box(img, bbox_points, current_color)
         except:
             print("Doesn't have bbox")
-        if len(bbox_points) == 4 or len(hbox_points) == 4:
-            if len(bbox_points) == 4:
+
+        if bbox_points is not None or hbox_points is not None:
+            if bbox_points is not None:
                 x_head = bbox_points[0]
                 y_head = bbox_points[1]
             
-            elif len(hbox_points) == 4:
+            elif hbox_points is not None:
                 x_head = hbox_points[0]
                 y_head = hbox_points[1]
             

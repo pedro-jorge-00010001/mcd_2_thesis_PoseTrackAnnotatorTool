@@ -16,6 +16,14 @@
 ### GPU support: https://www.tensorflow.org/install/gpu
 
 ## Libraries
+
+### GUI
+#### Tkinter
+- https://ttkwidgets.readthedocs.io/en/sphinx_doc/ttkwidgets/ttkwidgets/ttkwidgets.TimeLine.html#
+
 ### Human Pose Estimation
 - OpenPose https://github.com/CMU-Perceptual-Computing-Lab/openpose
 - MoveNet https://tfhub.dev/google/movenet/multipose/lightning/1
+
+### Person detection
+- YoloV5 https://www.youtube.com/watch?v=tFNJGim3FXw

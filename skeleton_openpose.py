@@ -41,7 +41,12 @@ try:
     parser = argparse.ArgumentParser()    
     params = dict()
     params["model_folder"] = r"libraries\openpose\models"
- 
+    
+    # Starting OpenPose
+    opWrapper = op.WrapperPython()
+    opWrapper.configure(params)
+    opWrapper.start()
+
 except Exception as e:
     print(e)
     sys.exit(-1)
@@ -50,17 +55,18 @@ except Exception as e:
 if __name__=="__main__": 
     directory_path = filedialog.askdirectory(title="Select directory")
     directory_path += '/*'  
-    # Starting OpenPose
-    opWrapper = op.WrapperPython()
-    opWrapper.configure(params)
-    opWrapper.start()
     for path in glob.glob(directory_path):
         # Process Image
+        path = path.replace("/", "\\")
         imageToProcess = cv2.imread(path)
+
         keypoints, output_image = get_keypoints(imageToProcess)
 
+        for keypoint in keypoints:
+            print(keypoint)
+
         # Display Image
-        print("Body keypoints: \n" + str(keypoints))
+        #print("Body keypoints: \n" + str(keypoints))
         cv2.imshow("OpenPose 1.7.0 - Tutorial Python API", output_image)
         cv2.waitKey(0)
         if cv2.waitKey(1) & 0xFF==ord('q'):
