@@ -20,6 +20,8 @@
 ### GUI
 #### Tkinter
 - https://ttkwidgets.readthedocs.io/en/sphinx_doc/ttkwidgets/ttkwidgets/ttkwidgets.TimeLine.html#
+- https://ttkwidgets.readthedocs.io/en/sphinx_doc/_modules/ttkwidgets/timeline.html#TimeLine.create_scroll_region
+- https://ttkwidgets.readthedocs.io/en/latest/examples/TimeLine.html
 
 ### Human Pose Estimation
 - OpenPose https://github.com/CMU-Perceptual-Computing-Lab/openpose
