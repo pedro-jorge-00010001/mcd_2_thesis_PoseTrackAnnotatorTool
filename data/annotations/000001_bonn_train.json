@@ -5255,18 +5255,6 @@
             ]
         }
     ],
-    "other": [
-        {
-            "track_id": 0,
-            "gender": "M",
-            "age_group": "SENIOR"
-        },
-        {
-            "track_id": 1,
-            "gender": "M",
-            "age_group": "ADULT"
-        }
-    ],
     "characteristics": [
         {
             "track_id": 1,

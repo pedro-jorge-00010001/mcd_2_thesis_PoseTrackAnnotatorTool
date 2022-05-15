@@ -1,3 +1,5 @@
+#NOTE: Deep sort needs the format `top_left_x, top_left_y, width,height
+
 from libraries.deep_sort import nn_matching
 from libraries.deep_sort.tracker import Tracker 
 from libraries.application_util import preprocessing as prep
@@ -25,19 +27,14 @@ class deepsort_rbc():
 		self.metric = nn_matching.NearestNeighborDistanceMetric("cosine",.5 , 100)
 		self.tracker= Tracker(self.metric)
 
-
 		self.transforms = torchvision.transforms.Compose([ \
 				torchvision.transforms.ToPILImage(),\
 				torchvision.transforms.Resize((128,128)),\
 				torchvision.transforms.ToTensor()])
 
-
-
 	def reset_tracker(self):
 		self.tracker= Tracker(self.metric)
 
-	#Deep sort needs the format `top_left_x, top_left_y, width,height
-				
 
 	def pre_process(self,frame,detections):	
 
@@ -45,7 +42,7 @@ class deepsort_rbc():
 			torchvision.transforms.ToPILImage(),\
 			torchvision.transforms.Resize((128,128)),\
 			torchvision.transforms.ToTensor()])
-
+			
 		crops = []
 		for d in detections:
 

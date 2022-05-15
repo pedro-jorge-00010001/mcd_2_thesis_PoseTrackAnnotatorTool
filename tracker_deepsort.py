@@ -1,4 +1,5 @@
 #https://github.com/abhyantrika/nanonets_object_tracking/
+#NOTE: Deep sort needs the format `top_left_x, top_left_y, width,height
 from operator import index
 import matplotlib.pyplot as plt
 import numpy as np
@@ -56,13 +57,13 @@ def get_ids_from_image(img, detections):
     for track in tracker.tracks:
         if not track.is_confirmed() or track.time_since_update > 1:
             continue
-        bbox = track.to_tlbr() #Get the corrected/predicted bounding box
+        bbox = utils.trasnform_to_xy(track.to_tlwh()) #Get the corrected/predicted bounding box
         id_num = str(track.track_id) #Get the ID for the particular track.
 
         bbox_from_tracking = bbox
-        detections_rectangle_vector = [det.to_tlbr() for det in detections_class]
+        detections_rectangle_vector = [utils.trasnform_to_xy(det.tlwh) for det in detections_class]
         bbox_from_detection, index = utils.get_closest_rectangle_to(bbox_from_tracking,detections_rectangle_vector)
-        bbox_and_ids.append((id_num, bbox_from_detection, bbox_from_tracking))
+        bbox_and_ids.append((id_num, utils.trasnform_to_wh(bbox_from_detection), utils.trasnform_to_wh(bbox_from_tracking)))
     return bbox_and_ids
 
 

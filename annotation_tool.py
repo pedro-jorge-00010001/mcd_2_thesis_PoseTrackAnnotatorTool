@@ -1,26 +1,28 @@
 #https://ttkwidgets.readthedocs.io/en/sphinx_doc/_modules/ttkwidgets/timeline.html#TimeLine.create_scroll_region
-from distutils.command.config import config
+from email import utils
 from tkinter import *
 from tkinter import filedialog
+from tkinter import messagebox
 from tkinter import Tk, Label, Button
-from tkinter import messagebox as msgb
 from tkinter import IntVar
-from tkinter import colorchooser
+
+from views.ImageView import ImageView
+from views.TimelineView import TimelineView
 
 from PIL import Image
 from PIL import ImageTk
 
+import os
 import imutils
 import json
 import cv2
 
+import utilities.utils as utils
 import  utilities.image_annotator as image_annotator
 from enums.AgeGroup import AgeGroup
 from enums.Gender import Gender
 
 from configparser import ConfigParser
-from ttkwidgets import TimeLine
-from utilities.utils import get_number_to_string    
 
 IMAGE_WIDTH = 1400
 IMAGE_HEIGHT = 790
@@ -29,10 +31,14 @@ class Gui:
     
     def __init__(self, master):
         self.master = master
+        
         # disable resize
         self.master.resizable(False, False)
-        master.title('PoseTrackAnnotatorTool')
+        master.title('AnnotationTool')
         
+        #Source: <a href="https://www.flaticon.com/free-icons/edit" title="edit icons">Edit icons created by Kiranshastry - Flaticon</a>
+        root.iconbitmap(r"resources\edit.ico")
+
         # load configurations
         self.config = ConfigParser()
         self.config.read('config.ini')
@@ -43,8 +49,7 @@ class Gui:
         self.left_images_number = 0
         self.stop_current_vid = False
         self.pause_image_flag = False
-        self.current_annotations = None
-        self.current_image_shape = (0,0,0)
+        
         self.gender_selected = IntVar(master)
         self.age_group_selected = IntVar(master)
         self.person_selected_id = None
@@ -57,7 +62,7 @@ class Gui:
         pause_images_seq_cmd = master.register(self.pause_images_seq)
         save_annotation_cmd = master.register(self.save_annotation)
         hide_annotations_cmd = master.register(self.hide_annotations)
-        add_action_event = master.register(self.add_action_event)
+        
 
         # BUILD INTERFACE
         #   => Menu
@@ -77,11 +82,9 @@ class Gui:
         self.menu.add_cascade(label = "Settings", menu=self.settings_menu)
         
         self.path_label = Label(root, text = annotation_path)      
-        #   => IMAGE PANEL
-        #self.image_panel = PanedWindow(bd = 0, bg="white", width= 800, height=450)
-        self.image = Canvas(master, width = IMAGE_WIDTH, height=IMAGE_HEIGHT)
-        self.image.bind("<Button 1>", self.click_event)
-        # self.image_panel.add(self.image)
+        
+        self.image_view = ImageView(self, self.master)
+        self.timeline_view = TimelineView(self, self.master)
 
         #   => TOOLS PANEL
         self.tools_panel = PanedWindow(bd = 4,orient= VERTICAL, width= 200, height=450)
@@ -124,49 +127,14 @@ class Gui:
         save_button = Button(self.tools_panel, text = "Save annotations", command = save_annotation_cmd, height=150)
         self.tools_panel.add(save_button)
 
-        #   => timeline
-        self.timeline = TimeLine(
-            master = root
-        )
-        self.timeline.draw_timeline()
-        # =>  timeline menu
-        
-        self.timeline._canvas_categories.bind_all()
-        self.timeline_menu = Menu(self.master, tearoff=False)
-        self.timeline_menu.add_command(label="Some Action", command=add_action_event)
-        
         # LAYOUT
         self.path_label.grid(column=0, row=0)
-        #
-        self.image.grid(column=0, row=1)
-        #self.image_panel.grid(column=0, row=2)
-        #   => LAYOUT TOOLS PANEL
+        self.timeline_view.grid(column=None, row=2)
+        self.image_view.grid(column=0, row=1)
         self.tools_panel.grid(column=1, row=1)
-        self.timeline.grid(row=2)
         self._load_data(annotation_path)
     
-    def add_action_event(self):
-        print("id selected",self.action_id_selection)
-        try:
-            frame_number = float(TimeLine.get_time_string(self.timeline.time, self.timeline._unit))
-        except:
-             frame_number = 0
-        self.timeline.tag_configure(get_number_to_string(self.action_id_selection), hover_border=2)   
-        # r,g,b = (round(random.random()*255), round(random.random()*255), round(random.random()*255)) 
-        # hex = rgb2hex(r,g,b)
-        self.timeline.create_marker(get_number_to_string(self.action_id_selection), frame_number, frame_number+2,
-            tags=(get_number_to_string(self.action_id_selection),), text="nothing", background= "#5fedce" ,border = 1)
-        
-
-    def move_time_pointer_event(self, event):
-        # stop video when moving the pointer
-        self.pause_image_flag = True
-        # get time pointer number
-        frame_number = round(float(self.timeline._time_label.cget("text")))
-        # update images left
-        self.left_images_number = len(self.json_data["images"]) - frame_number -1 
-        self._set_image(frame_number)
-    
+ 
     def select_file(self):
         annotation_path = filedialog.askopenfilename(filetypes = [
             ("Json files", ".json")])
@@ -190,7 +158,7 @@ class Gui:
         file_path = self.path_label.cget("text")
         if self.pause_image_flag == True:
             self.pause_image_flag = False
-            self.image.after(200, self.visualize)
+            self.image_view.after(200, self.visualize)
         else:
             if file_path != 'Empty':
                 data = None
@@ -205,55 +173,24 @@ class Gui:
         self.show_anotations = not self.show_anotations
         self.visualize()
 
-    def click_event(self, eventorigin):
-        #Multipliers to get the current rectangle for the resized image
-        x_multiplier = IMAGE_WIDTH/self.current_image_shape[1]
-        y_multiplier = IMAGE_HEIGHT/self.current_image_shape[0]
+    
+    def remove_person_from_json(self, person_selected_id):
+        value_dict = {
+                            'track_id': person_selected_id,
 
-        #Point
-        xP = eventorigin.x
-        yP = eventorigin.y
-
-        self.person_selected_id = None
-
-        #head box
-        for current_annotation in self.current_annotations:
-            try:
-                box_points = current_annotation["bbox_head"]
-                #Rectangle
-                x1 = int(box_points[0]*x_multiplier)
-                y1 = int(box_points[1]*y_multiplier)
-                x2 = x1 + int(box_points[2]*x_multiplier)
-                y2 = y1 + int(box_points[3]*y_multiplier)                             
-                print(x1,y1,x2,y2)
-                if (x1 < xP and xP < x2):
-                    if (y1 < yP and yP < y2):
-                        self.person_selected_id = current_annotation["track_id"]                   
-                        print(current_annotation["track_id"])
-                        break
-            except:
-                print("Doesn't have head box")
-
-        if self.person_selected_id == None:
-            #body box
-            for current_annotation in self.current_annotations:
-                try:
-                    box_points = current_annotation["bbox"]
-                    #Rectangle
-                    x1 = int(box_points[0]*x_multiplier)
-                    y1 = int(box_points[1]*y_multiplier)
-                    x2 = x1 + int(box_points[2]*x_multiplier)
-                    y2 = y1 + int(box_points[3]*y_multiplier)                             
-                    print(x1,y1,x2,y2)
-                    if (x1 < xP and xP < x2):
-                        if (y1 < yP and yP < y2):
-                            self.person_selected_id = current_annotation["track_id"]                   
-                            print(current_annotation["track_id"])
-                            break
-                except:
-                    print("Doesn't have body box")
-        self.person_selected_label.config(text ="Person Id: " + str(self.person_selected_id))
+                        }
+        self._remove_json_info('annotations', value_dict)
+        self._remove_json_info('characteristics', value_dict)
+        self._remove_json_info('actions', value_dict)
         
+        self.left_images_number += 1
+        self.visualize()
+        #with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
+        #    json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+
+    def change_person_selected_label(self, person_selected_id):
+        self.person_selected_label.config(text ="Person Id: " + str(person_selected_id))
+            
         #Update interface
         if 'characteristics' in self.json_data:
             other_json = self.json_data['characteristics']
@@ -266,11 +203,10 @@ class Gui:
             else:
                 self.gender_selected.set(0)
                 self.age_group_selected.set(0)
-            
     
 
     def save_annotation(self):
-        markers = self.timeline.markers
+        markers = self.timeline_view.get_markers()
         self.json_data['actions'] = []
         for key, value in markers.items():
             diff_len = round(float(value['finish']) -float(value['start']))
@@ -305,6 +241,14 @@ class Gui:
             json.dump(self.json_data, f, ensure_ascii=False, indent=4)
         
 
+    def _remove_json_info(self, topic, value_dict):
+        if topic in self.json_data:
+            element_list = self.json_data[topic]
+            if list(filter(lambda f: (f["track_id"] == value_dict["track_id"]), element_list)):   
+                annotations_except_this = list(filter(lambda f: (f["track_id"] != value_dict["track_id"]), element_list))
+                self.json_data[topic] = annotations_except_this
+            
+
     def _update_json_info(self, topic, value_dict, update_element_if_in = True):
         if topic in self.json_data:
             element_list = self.json_data[topic]
@@ -330,155 +274,61 @@ class Gui:
         if self.json_data != None and self.stop_current_vid != True:
             if self.left_images_number > 0:
                 image_number = len(self.json_data["images"]) - self.left_images_number - 1
-                self._set_image(image_number)
+                self.set_image(image_number)
                 if self.pause_image_flag != True:                
-                    self.image.after(300 - self.slicer_button.get(), self.visualize)
+                    self.image_view.after(300 - self.slicer_button.get(), self.visualize)
 
     def _load_data(self , annotation_path):
-        self.path_label.configure(text = annotation_path)
-        self.config.set('paths', 'annotation_path', annotation_path)
-        with open('config.ini', 'w') as configfile:
-            self.config.write(configfile)
-        
-        with open(annotation_path) as json_file:
-                data = json.load(json_file)       
-        self.json_data = data
-        self.left_images_number = len(self.json_data["images"])
-        
-        annotations = self.json_data["annotations"]
-        annotations_track_ids = [x['track_id'] for x in annotations]
-        persons_len = max(annotations_track_ids) + 1
+        if os.path.exists(annotation_path):
 
-        self._set_image(0)
-
-        # update timeline
-        self.timeline.destroy()
-        self.timeline.__init__(master = root, 
-            height=100, width = 1300, 
-            extend=True,  zoom_enabled = False, 
-            start = 0.0, 
-            resolution= 0.022, tick_resolution = 1.0,
-            unit = 's',
-            categories={get_number_to_string(key): {"text": "Person-{}".format( key)} for key in range(0, persons_len)},
-            finish = float(self.left_images_number-1), snap_margin = 2
-        )
-        
-        self.timeline.draw_timeline()   
-        self.timeline._canvas_ticks.bind("<ButtonRelease-1>", self.move_time_pointer_event)
-        self.timeline._timeline.bind("<ButtonPress-3>", self.timeline_rclick_event)
-        self.timeline.grid(row=2)
-        self.timeline._timeline.bind("<Double-Button-1>", self.double_click_event)
-        
-        
-        #Load timeline data
-        try:
-            for element in self.json_data["actions"]:
-                self.timeline.tag_configure(get_number_to_string(element["track_id"]), hover_border=2)   
-                self.timeline.create_marker(get_number_to_string(element["track_id"]), element["start_frame"], element["finish_frame"],
-                        tags=(get_number_to_string(element["track_id"]),), text = element["action_name"], background= element["color"] ,border = 1)
-        except:
-            print("No actions to load")
-
-    
- 
-    def double_click_event(self, event):
-        def click_cancel():
-            self.timeline.update_marker(iid, background=tag_brackground)
-            pop.destroy()
-
-        def click_ok():
-            start = float(round(float(selected_tag['start'])))
-            finish = float(round(float(selected_tag['start']))) + float(frame_lenght_label.get())
-            if start == finish:
-                finish = start + 1
+            self.path_label.configure(text = annotation_path)
+            self.config.set('paths', 'annotation_path', annotation_path)
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
             
-            self.timeline.update_marker(iid,text = name_label.get(), 
-                start = start, finish = finish, 
-                background = button_color.cget('bg'))
-            pop.destroy()
+            with open(annotation_path) as json_file:
+                    data = json.load(json_file)       
+            self.json_data = data
+            self.left_images_number = len(self.json_data["images"])
+            
+            annotations = self.json_data["annotations"]
+            annotations_track_ids = [x['track_id'] for x in annotations]
+            annotations_track_ids = list(sorted(set(annotations_track_ids)))
 
-        def pick_color():
-            color = colorchooser.askcolor()[1]
-            button_color.config(bg=color)
-            pop.deiconify()
+            if os.path.exists(utils.build_path(self.config['paths']['image_path'], self.json_data["images"][0]["file_name"])):
+                self.set_image(0)
+            else:
+                messagebox.showerror(title="Image not found", message="The image referenced by the annotation cannot be found\nPlease verify the images path")
 
-        def delete_marker():
-            self.timeline.delete_marker(iid)
-            self.timeline._active = None
-            pop.destroy()
-
-        self.timeline.update_active()
-        iid = self.timeline.current_iid
-        if iid is None:
-            return
-        
-        selected_tag = self.timeline._markers[iid]
-        tag_brackground = selected_tag['background']
-        self.timeline.update_marker(iid, background="gray")
-        
-        pop = Toplevel(self.master)
-        pop.title("Annotation: " + selected_tag['text'])
-        pop.geometry("%dx%d+%d+%d" % (250, 100, event.x_root, event.y_root))
-        pop.tkraise(self.timeline)
-        pop.wm_resizable(False,False)
-        # Edit name
-        Label(pop, text="Edit name").grid(row=0, column=0)
-        name_label = StringVar(pop)
-        name_label.set(selected_tag['text'])
-        Entry(pop, textvariable = name_label, width=20).grid(row=0, column=1)
-
-        # Edit frames lenght
-        Label(pop, text="Frames lenght").grid(row=1, column=0)
-        frame_lenght_label = StringVar(pop)
-        frame_lenght_label.set(str(int(round(float(selected_tag['finish'])-float(selected_tag['start'])))))
-        Entry(pop, textvariable = frame_lenght_label, width=20).grid(row=1, column=1)
-        
-        # Edit color
-        label_color = Label(pop, text="Color:")
-        label_color.grid(row=2, column=0, sticky='nesw')
-
-        #Buttons
-        button_color = Button(pop, text = "", command= pick_color,bg=tag_brackground, bd=0)
-        button_color.grid(row=2, column=1,sticky='nesw')
-        button_ok = Button(pop, text="Ok", command = click_ok, bd=1)
-        button_ok.grid(row=3, column=0,sticky='nesw')
-
-        button_remove = Button(pop, text="Remove", command = delete_marker, bd=1)
-        button_remove.grid(row=3, column=1,sticky='nesw')
-        
-        button_cancel = Button(pop, text="Cancel", command= click_cancel, bd=1)
-        button_cancel.grid(row=3, column=2,sticky='nesw')
+            # update timeline
+            self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
+            
+            #Load timeline data
+            self.timeline_view.load_data(self.json_data["actions"])
+        else:
+            messagebox.showerror(title="Annotation not found", message="The selected annotation doesn't exist\nPlease verify the path or select other annotation")
 
 
-    def timeline_rclick_event(self, event):       
-        self.action_id_selection = event.y//20
-        self.timeline_menu.tk_popup(event.x_root,event.y_root )
-
-    def _set_image(self, image_number):
+    def set_image(self, image_number):
         if image_number < 0:
             image_number = 0
-        self.timeline.set_time(float(image_number))
-        try:
-            self.timeline._time_label['text'] = str(image_number)
-        except: 
-            pass
+        self.left_images_number = len(self.json_data["images"]) - image_number - 1
+        self.timeline_view.set_time(float(image_number))
         # get image
         img = self.json_data["images"][image_number]
+        images_directory_path = self.config['paths']['image_path']
+        current_annotations = None
         if self.show_anotations:
-            images_directory_path = self.config['paths']['image_path']
-            img, current_annotations = image_annotator.annotate_image(img,image_number, self.json_data,images_directory_path)
-            self.current_annotations = current_annotations                
-            self.current_image_shape = img.shape
-        else:
-            images_directory_path = self.config['paths']['image_path']           
+            img, current_annotations = image_annotator.annotate_image(img,image_number, self.json_data,images_directory_path)             
+        else:       
             img = cv2.imread(image_annotator.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        current_image_shape = img.shape
         # resize
         img = imutils.resize(img, width=IMAGE_WIDTH, height=IMAGE_HEIGHT)
         im = Image.fromarray(img)            
         img = ImageTk.PhotoImage(image=im)
-        self.image.create_image(0, 0, image=img, anchor=NW)
-        self.image.image = img
+        self.image_view.show_image(img,current_annotations, current_image_shape)
 
 root = Tk()
 my_gui = Gui(root)

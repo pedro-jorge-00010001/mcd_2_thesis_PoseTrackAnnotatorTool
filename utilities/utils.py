@@ -4,6 +4,15 @@ from tkinter import filedialog
 from scipy.spatial import distance
 import numpy as np
 
+def get_rectangle_area(rectangle):
+    if rectangle is None: return 0
+    x, y, w, h =  rectangle
+    assert w >= x
+    assert h >= y
+    length = w - x
+    witdh = h - y
+    return length * witdh
+
 def json_formating_fixer():
     file_path = filedialog.askopenfilename(filetypes = [("Json files", ".json")])
 
@@ -38,8 +47,7 @@ assert get_boxes_diferents_between([[0,0,20,20]], [[0,0,10,20], [0,0,30,40]]) ==
 
 
 def get_closest_rectangle_to(rectangle, vector_of_rectangles_to_compare, maximum_dst = 30):
-    
-    
+  
     main_rectangle_center = get_rectangle_center(rectangle)
 
     current_min_dst = 9999999
@@ -58,13 +66,6 @@ def get_closest_rectangle_to(rectangle, vector_of_rectangles_to_compare, maximum
         current_min_dst_rect = None
     return current_min_dst_rect, index
 
-def get_number_to_string(number):
-    if int(number) < 10:
-        return '0' + str(number)
-    return str(number)
-
-assert get_number_to_string(1) == '01'
-assert get_number_to_string(21) == '21'
  
 x = [[120, 120,0],
 [30,130, 0]]
@@ -92,9 +93,13 @@ def get_rectangle_from_keypoints(keypoints):
 assert get_rectangle_from_keypoints(x) == (30,120,120,130)
 
 
-def trasnform_wh_to_x2y2(bbox):
+def trasnform_to_wh(bbox):
+    if bbox is None: return None
     return (bbox[0], bbox[1], bbox[2]-bbox[0],bbox[3] - bbox[1])
 
+def trasnform_to_xy(bbox):
+    if bbox is None: return None
+    return (bbox[0], bbox[1], bbox[2]+bbox[0],bbox[3] + bbox[1])
 
 def get_skeletons_and_ids_from_bbox(bboxs_with_ids, vector_of_keypoints):
     if bboxs_with_ids is not None and vector_of_keypoints is not None:
@@ -112,7 +117,47 @@ def get_skeletons_and_ids_from_bbox(bboxs_with_ids, vector_of_keypoints):
     else:
         return []
 
+map_openpose_posetrack = {
+    "nose" : [1, 0],
+    "head_bottom" : [2, None],
+    "head_top" : [3, None],
+    "left_ear" : [4, 18],
+    "right_ear" : [5, 17],
+    "left_shoulder" : [6, 5],
+    "right_shoulder" : [7, 2],
+    "left_elbow" : [8, 6],
+    "right_elbow" : [9, 3],
+    "left_wrist" : [10, 7],
+    "right_wrist" : [11, 4],
+    "left_hip" : [12, 12],
+    "right_hip" : [13, 9],
+    "left_knee" : [14, 13],
+    "right_knee" : [15, 10],
+    "left_ankle" : [16, 14],
+    "right_ankle" : [17, 11],
+}
 
-            
+def transform_openpose_skl_to_posetrack_skl(keypoints_openpose):
+    keys = map_openpose_posetrack.keys()
+    keypoints = []
+    for key in keys:
+        openpose_identificator = map_openpose_posetrack[key][1]
+        if openpose_identificator is None:
+            keypoints.append([0,0,0])
+        else:
+            openpose_keypoint = keypoints_openpose[openpose_identificator]
+            keypoints.append(openpose_keypoint)
+    return keypoints
+
+def build_path(images_directory_path, image_path):
+    images_directory_path_as_array = images_directory_path.split('\\')
+    image_path_as_array = image_path.split('\\')
+    for part_of_path in image_path_as_array:
+        if part_of_path not in images_directory_path_as_array:
+            images_directory_path_as_array.append(part_of_path)
+    images_directory_path_as_array = [part_of_path for part_of_path in images_directory_path_as_array if part_of_path.strip() != '']
+    return "\\".join(images_directory_path_as_array)
+
+
 
         
