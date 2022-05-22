@@ -4,4 +4,4 @@ __pycache__/
 /libraries/yolo/
 /.vscode/
 *.pt
-*.ini
+/config.ini

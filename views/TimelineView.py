@@ -8,6 +8,12 @@ class TimelineView(Frame):
     def __init__(self, parent, container):
         super().__init__(container)
         add_action_event = container.register(self.add_action_event)
+        self.timeline_height = 80
+        self.timeline_width = 1050
+        screen_width = container.winfo_screenwidth()
+        if screen_width >= 1920:
+            self.timeline_height= 100
+            self.timeline_width = 1300
 
         #attributes
         self._parent = parent
@@ -95,6 +101,7 @@ class TimelineView(Frame):
         
         pop = Toplevel(self.master)
         pop.title("Annotation: " + selected_tag['text'])
+        pop.iconbitmap(r"resources\edit.ico")
         pop.geometry("%dx%d+%d+%d" % (240, 110, event.x_root, event.y_root))
         pop.tkraise(self.timeline)
         pop.wm_resizable(False,False)
@@ -134,12 +141,12 @@ class TimelineView(Frame):
 
 
     #Other methods
-
     def update_timeline(self,left_images_number, annotations_track_ids):
         self.timeline.destroy()
         self._left_images_number = left_images_number
+        
         self.timeline.__init__(master = self._parent.master, 
-            height=100, width = 1300, 
+            height=self.timeline_height, width = self.timeline_width, 
             extend=True,  zoom_enabled = False, 
             start = 0.0, 
             resolution= 0.022, tick_resolution = 1.0,

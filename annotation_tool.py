@@ -24,21 +24,25 @@ from enums.Gender import Gender
 
 from configparser import ConfigParser
 
-IMAGE_WIDTH = 1400
-IMAGE_HEIGHT = 790
-
 class Gui:
     
     def __init__(self, master):
         self.master = master
         
         # disable resize
-        self.master.resizable(False, False)
+        screen_width = self.master.winfo_screenwidth()
+        if screen_width < 1920:
+            self.master.resizable(True, True)
+            self.master.state('zoomed')
+
+        #self.master.attributes('-fullscreen', True)
+        self.master.columnconfigure(0, weight = 1)
+        self.master.rowconfigure(0, weight = 1)
         master.title('AnnotationTool')
         
         #Source: <a href="https://www.flaticon.com/free-icons/edit" title="edit icons">Edit icons created by Kiranshastry - Flaticon</a>
         root.iconbitmap(r"resources\edit.ico")
-
+    
         # load configurations
         self.config = ConfigParser()
         self.config.read('config.ini')
@@ -99,6 +103,7 @@ class Gui:
         self.tools_panel.add(hide_button)
         self.tools_panel.add(self.slicer_button)
         self.tools_panel.add(self.person_selected_label)
+        
         #       => GENDER PANEL
         self.gender_panel = PanedWindow(bd = 4,orient= VERTICAL,width= 200, height=80)
         label = Label(root, text = "Gender:") 
@@ -129,8 +134,8 @@ class Gui:
 
         # LAYOUT
         self.path_label.grid(column=0, row=0)
-        self.timeline_view.grid(column=None, row=2)
         self.image_view.grid(column=0, row=1)
+        self.timeline_view.grid(column=None, row=2)
         self.tools_panel.grid(column=1, row=1)
         self._load_data(annotation_path)
     
@@ -173,7 +178,81 @@ class Gui:
         self.show_anotations = not self.show_anotations
         self.visualize()
 
+    def update_person_id_in_json(self, person_selected_id, new_person_id, option = "n"):
+        # Update annotations
+        if 'annotations' in self.json_data:
+            annotations_new = []
+            image_number = len(self.json_data["images"]) - self.left_images_number - 1
+            image_id = self.json_data["images"][image_number]["id"]
+            for annotation in self.json_data['annotations']:
+                #Conditions
+                if annotation["track_id"] == person_selected_id and \
+                    ((annotation['image_id'] > image_id and option == "n") or \
+                    (annotation['image_id'] < image_id and option == "p") or  \
+                    (option == "a")):
+                    
+                    annotation["track_id"] = int(new_person_id)
+                    annotations_new.append(annotation)
+                else:
+                    annotations_new.append(annotation)
+            self.json_data['annotations'] = annotations_new
+        
+        if 'characteristics' in self.json_data:
+            characteristics_new = []
+            image_id = self.json_data["images"][image_number]["id"]
+            for annotation in self.json_data['characteristics']:
+                #Conditions
+                if annotation["track_id"] == person_selected_id:
+                    annotation["track_id"] = int(new_person_id)
+                    characteristics_new.append(annotation)
+                else:
+                    characteristics_new.append(annotation)
+            self.json_data['characteristics'] = characteristics_new
+
+        if 'actions' in self.json_data:
+            actions_new = []
+            image_id = self.json_data["images"][image_number]["id"]
+            for annotation in self.json_data['actions']:
+                #Conditions
+                if annotation["track_id"] == person_selected_id:
+                    annotation["track_id"] = int(new_person_id)
+                    actions_new.append(annotation)
+                else:
+                    actions_new.append(annotation)
+            self.json_data['actions'] = actions_new
+
+        
+        self.left_images_number += 1
+        #refresh timeline
+        annotations = self.json_data["annotations"]
+        annotations_track_ids = [x['track_id'] for x in annotations]
+        annotations_track_ids = list(sorted(set(annotations_track_ids)))    
+        self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
+        self.timeline_view.load_data(self.json_data.get("actions", None))
+        self.visualize()
+        #characteristics
+        #actions
     
+    def _update_id_in_json(self, person_selected_id, new_person_id, option, topic):
+        if topic in self.json_data:
+            annotations_new = []
+            image_number = len(self.json_data["images"]) - self.left_images_number - 1
+            image_id = self.json_data["images"][image_number]["id"]
+            for annotation in self.json_data[topic]:
+                #Conditions
+                if annotation["track_id"] == person_selected_id and \
+                    ((annotation['image_id'] > image_id and option == "n") or \
+                    (annotation['image_id'] < image_id and option == "p") or  \
+                    (option == "a")):
+                    
+                    annotation["track_id"] = int(new_person_id)
+                    annotations_new.append(annotation)
+                else:
+                    annotations_new.append(annotation)
+            self.json_data[topic] = annotations_new
+
+
+
     def remove_person_from_json(self, person_selected_id):
         value_dict = {
                             'track_id': person_selected_id,
@@ -190,6 +269,7 @@ class Gui:
 
     def change_person_selected_label(self, person_selected_id):
         self.person_selected_label.config(text ="Person Id: " + str(person_selected_id))
+        self.person_selected_id = person_selected_id
             
         #Update interface
         if 'characteristics' in self.json_data:
@@ -208,6 +288,7 @@ class Gui:
     def save_annotation(self):
         markers = self.timeline_view.get_markers()
         self.json_data['actions'] = []
+        
         for key, value in markers.items():
             diff_len = round(float(value['finish']) -float(value['start']))
             start = int(round(float(value['start'])))
@@ -304,7 +385,7 @@ class Gui:
             self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
             
             #Load timeline data
-            self.timeline_view.load_data(self.json_data["actions"])
+            self.timeline_view.load_data(self.json_data.get("actions", None))
         else:
             messagebox.showerror(title="Annotation not found", message="The selected annotation doesn't exist\nPlease verify the path or select other annotation")
 
@@ -321,11 +402,11 @@ class Gui:
         if self.show_anotations:
             img, current_annotations = image_annotator.annotate_image(img,image_number, self.json_data,images_directory_path)             
         else:       
-            img = cv2.imread(image_annotator.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")))
+            img = cv2.imread(utils.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         current_image_shape = img.shape
         # resize
-        img = imutils.resize(img, width=IMAGE_WIDTH, height=IMAGE_HEIGHT)
+        img = imutils.resize(img, width=self.image_view.image_witdh, height=self.image_view.image_height)
         im = Image.fromarray(img)            
         img = ImageTk.PhotoImage(image=im)
         self.image_view.show_image(img,current_annotations, current_image_shape)
