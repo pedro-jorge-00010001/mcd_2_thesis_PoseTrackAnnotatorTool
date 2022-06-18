@@ -6,7 +6,7 @@ class ImageView(Frame):
         super().__init__(container)
         #regist event in parent
         remove_annotation_event = container.register(self._remove_annotation_event)
-        
+        remove_annotation_from_frame_event = container.register(self._remove_annotation_from_frame_event)
         #attributes
         self._parent = parent
         self._current_image_shape = (0,0,0)
@@ -26,6 +26,8 @@ class ImageView(Frame):
         self._image_rclick_menu = Menu(container, tearoff=False)
 
         self._image_rclick_menu.add_command(label="Remove annotation", command=remove_annotation_event)
+        self._image_rclick_menu.add_command(label="Remove annotation from frame", command=remove_annotation_from_frame_event)
+
         self._image.bind("<Button 1>", self._image_lclick_event)
         self._image.bind("<ButtonPress-3>", self._image_rclick_event)
         self._image.bind("<Double-Button-1>", self._edit_id_event)
@@ -60,8 +62,8 @@ class ImageView(Frame):
                 new_id = int(name_label.get())
                 self._parent.update_person_id_in_json(person_selected_id, new_id, option = option)
                 pop.destroy()
-            except:
-                print("erro")
+            except Exception as e: 
+                print(f"Erro {e}")
                 pass
 
         if self._current_annotations is not None and len(self._current_annotations):
@@ -72,8 +74,8 @@ class ImageView(Frame):
 
             pop = Toplevel(self.master)
             pop.title("Id: " + str(person_selected_id))
-            pop.geometry("%dx%d+%d+%d" % (195, 45, event.x_root, event.y_root))
-            pop.iconbitmap(r"resources\edit.ico")
+            pop.geometry("%dx%d+%d+%d" % (240, 45, event.x_root, event.y_root))
+            pop.iconbitmap(r"resources\images\edit.ico")
             pop.tkraise(self._image)
             pop.wm_resizable(False,False)
             
@@ -84,20 +86,31 @@ class ImageView(Frame):
             Entry(pop, textvariable = name_label).grid(row=0, column=1)
 
             #Buttons
-            button_prev = Button(pop, text="Prev", command = lambda: click_edit_button("p"), bd=1)
-            button_prev.grid(row=1, column=0,sticky='nesw')
+            button_all = Button(pop, text="Current", command = lambda: click_edit_button("c"), bd=1)
+            button_all.grid(row=1, column=0,sticky='nesw')
+
+            button_prev = Button(pop, text="Previous", command = lambda: click_edit_button("p"), bd=1)
+            button_prev.grid(row=1, column=1,sticky='nesw')
 
             button_next = Button(pop, text="Next", command = lambda: click_edit_button("n"), bd=1)
-            button_next.grid(row=1, column=1,sticky='nesw')
+            button_next.grid(row=1, column=2,sticky='nesw')
             
-            button_all = Button(pop, text="All", command = lambda: click_edit_button("a"), bd=1)
-            button_all.grid(row=1, column=2,sticky='nesw')
+            button_all = Button(pop, text="  All  ", command = lambda: click_edit_button("a"), bd=1)
+            button_all.grid(row=1, column=3,sticky='nesw')
+
+
 
     def _remove_annotation_event(self):
         if self._current_annotations is not None and len(self._current_annotations) and self._point_rclick is not None:
             xP,yP = self._point_rclick
             person_selected_id = self._get_selected_person_id(xP,yP)
             self._parent.remove_person_from_json(person_selected_id)
+
+    def _remove_annotation_from_frame_event(self):
+        if self._current_annotations is not None and len(self._current_annotations) and self._point_rclick is not None:
+            xP,yP = self._point_rclick
+            person_selected_id = self._get_selected_person_id(xP,yP)
+            self._parent.remove_person_from_json_frame(person_selected_id)
     
     def _image_lclick_event(self, event):
         if self._current_annotations is not None and len(self._current_annotations):

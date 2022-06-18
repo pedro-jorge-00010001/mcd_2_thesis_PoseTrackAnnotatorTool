@@ -101,7 +101,7 @@ class TimelineView(Frame):
         
         pop = Toplevel(self.master)
         pop.title("Annotation: " + selected_tag['text'])
-        pop.iconbitmap(r"resources\edit.ico")
+        pop.iconbitmap(r"resources\images\edit.ico")
         pop.geometry("%dx%d+%d+%d" % (240, 110, event.x_root, event.y_root))
         pop.tkraise(self.timeline)
         pop.wm_resizable(False,False)
@@ -164,10 +164,13 @@ class TimelineView(Frame):
     def load_data(self, actions):
         if actions is not None and len(actions):
             for action in actions:
-                self.timeline.tag_configure(self.get_number_to_string(action["track_id"]), hover_border=2)   
-                self.timeline.create_marker(self.get_number_to_string(action["track_id"]), action["start_frame"], action["finish_frame"],
-                        tags=(self.get_number_to_string(action["track_id"]),), text = action["action_name"], background= action["color"] ,border = 1)
-    
+                try:
+                    self.timeline.tag_configure(self.get_number_to_string(action["track_id"]), hover_border=2)
+                    self.timeline.create_marker(self.get_number_to_string(action["track_id"]), action["start_frame"], action["finish_frame"],
+                            tags=(self.get_number_to_string(action["track_id"]),), text = action["action_name"], background= action["color"] ,border = 1)
+                except:
+                    print("erro")
+        
     def set_time(self, time):
         self.timeline.set_time(float(time))
         try:

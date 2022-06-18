@@ -54,16 +54,17 @@ def get_ids_from_image(img, detections):
     tracker,detections_class = deepsort.run_deep_sort(frame,out_scores,detections)
     
     bbox_and_ids = []
-    for track in tracker.tracks:
-        if not track.is_confirmed() or track.time_since_update > 1:
-            continue
-        bbox = utils.trasnform_to_xy(track.to_tlwh()) #Get the corrected/predicted bounding box
-        id_num = str(track.track_id) #Get the ID for the particular track.
+    if hasattr(tracker, 'tracks'):
+        for track in tracker.tracks:
+            if not track.is_confirmed() or track.time_since_update > 1:
+                continue
+            bbox = utils.trasnform_to_xy(track.to_tlwh()) #Get the corrected/predicted bounding box
+            id_num = str(track.track_id) #Get the ID for the particular track.
 
-        bbox_from_tracking = bbox
-        detections_rectangle_vector = [utils.trasnform_to_xy(det.tlwh) for det in detections_class]
-        bbox_from_detection, index = utils.get_closest_rectangle_to(bbox_from_tracking,detections_rectangle_vector)
-        bbox_and_ids.append((id_num, utils.trasnform_to_wh(bbox_from_detection), utils.trasnform_to_wh(bbox_from_tracking)))
+            bbox_from_tracking = bbox
+            detections_rectangle_vector = [utils.trasnform_to_xy(det.tlwh) for det in detections_class]
+            bbox_from_detection, index = utils.get_closest_rectangle_to(bbox_from_tracking,detections_rectangle_vector)
+            bbox_and_ids.append((id_num, utils.trasnform_to_wh(bbox_from_detection), utils.trasnform_to_wh(bbox_from_tracking)))
     return bbox_and_ids
 
 
@@ -131,111 +132,10 @@ if __name__=="__main__":
             break
 
     #Store categories like PoseTrack
-    json_data_ids["categories"] = [
-            {
-                "supercategory": "person",
-                "id": 1,
-                "name": "person",
-                "keypoints": [
-                    "nose",
-                    "head_bottom",
-                    "head_top",
-                    "left_ear",
-                    "right_ear",
-                    "left_shoulder",
-                    "right_shoulder",
-                    "left_elbow",
-                    "right_elbow",
-                    "left_wrist",
-                    "right_wrist",
-                    "left_hip",
-                    "right_hip",
-                    "left_knee",
-                    "right_knee",
-                    "left_ankle",
-                    "right_ankle"
-                ],
-                "skeleton": [
-                    [
-                        16,
-                        14
-                    ],
-                    [
-                        14,
-                        12
-                    ],
-                    [
-                        17,
-                        15
-                    ],
-                    [
-                        15,
-                        13
-                    ],
-                    [
-                        12,
-                        13
-                    ],
-                    [
-                        6,
-                        12
-                    ],
-                    [
-                        7,
-                        13
-                    ],
-                    [
-                        6,
-                        7
-                    ],
-                    [
-                        6,
-                        8
-                    ],
-                    [
-                        7,
-                        9
-                    ],
-                    [
-                        8,
-                        10
-                    ],
-                    [
-                        9,
-                        11
-                    ],
-                    [
-                        2,
-                        3
-                    ],
-                    [
-                        1,
-                        2
-                    ],
-                    [
-                        1,
-                        3
-                    ],
-                    [
-                        2,
-                        4
-                    ],
-                    [
-                        3,
-                        5
-                    ],
-                    [
-                        4,
-                        6
-                    ],
-                    [
-                        5,
-                        7
-                    ]
-                ]
-            }
-        ]
-
+    with open(r"resources\json\skeleton_map.json") as json_file:
+        data = json.load(json_file)  
+        json_data_ids["categories"]= data
+    
     #Build new name
     vector = filename.split('/')
     name = vector[len(vector)-1].replace(".json", "_with_ids.json")

@@ -41,7 +41,7 @@ class Gui:
         master.title('AnnotationTool')
         
         #Source: <a href="https://www.flaticon.com/free-icons/edit" title="edit icons">Edit icons created by Kiranshastry - Flaticon</a>
-        root.iconbitmap(r"resources\edit.ico")
+        root.iconbitmap(r"resources\images\edit.ico")
     
         # load configurations
         self.config = ConfigParser()
@@ -189,6 +189,7 @@ class Gui:
                 if annotation["track_id"] == person_selected_id and \
                     ((annotation['image_id'] > image_id and option == "n") or \
                     (annotation['image_id'] < image_id and option == "p") or  \
+                    (annotation['image_id'] == image_id and option == "c") or  \
                     (option == "a")):
                     
                     annotation["track_id"] = int(new_person_id)
@@ -227,7 +228,7 @@ class Gui:
         annotations = self.json_data["annotations"]
         annotations_track_ids = [x['track_id'] for x in annotations]
         annotations_track_ids = list(sorted(set(annotations_track_ids)))    
-        self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
+        self.timeline_view.update_timeline(len(self.json_data["images"]), annotations_track_ids)
         self.timeline_view.load_data(self.json_data.get("actions", None))
         self.visualize()
         #characteristics
@@ -266,6 +267,14 @@ class Gui:
         self.visualize()
         #with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
         #    json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+    
+    def remove_person_from_json_frame(self, person_slected_id):
+        if 'annotations' in self.json_data:
+            element_list = self.json_data['annotations']
+            image_number = len(self.json_data["images"]) - self.left_images_number - 1
+            if list(filter(lambda f: (f["track_id"] == person_slected_id and f["track_id"] == image_number), element_list)):   
+                annotations_except_this = list(filter(lambda f: (f["track_id"] != person_slected_id and f["track_id"] != image_number), element_list))
+                self.json_data['annotations'] = annotations_except_this
 
     def change_person_selected_label(self, person_selected_id):
         self.person_selected_label.config(text ="Person Id: " + str(person_selected_id))
@@ -328,8 +337,8 @@ class Gui:
             if list(filter(lambda f: (f["track_id"] == value_dict["track_id"]), element_list)):   
                 annotations_except_this = list(filter(lambda f: (f["track_id"] != value_dict["track_id"]), element_list))
                 self.json_data[topic] = annotations_except_this
-            
 
+            
     def _update_json_info(self, topic, value_dict, update_element_if_in = True):
         if topic in self.json_data:
             element_list = self.json_data[topic]

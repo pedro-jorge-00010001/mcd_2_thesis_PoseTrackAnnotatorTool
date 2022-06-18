@@ -77,110 +77,9 @@ annotation_id = 0
 json_object = {}
 
 #Store categories like PoseTrack
-json_object["categories"] = [
-        {
-            "supercategory": "person",
-            "id": 1,
-            "name": "person",
-            "keypoints": [
-                "nose",
-                "head_bottom",
-                "head_top",
-                "left_ear",
-                "right_ear",
-                "left_shoulder",
-                "right_shoulder",
-                "left_elbow",
-                "right_elbow",
-                "left_wrist",
-                "right_wrist",
-                "left_hip",
-                "right_hip",
-                "left_knee",
-                "right_knee",
-                "left_ankle",
-                "right_ankle"
-            ],
-            "skeleton": [
-                [
-                    16,
-                    14
-                ],
-                [
-                    14,
-                    12
-                ],
-                [
-                    17,
-                    15
-                ],
-                [
-                    15,
-                    13
-                ],
-                [
-                    12,
-                    13
-                ],
-                [
-                    6,
-                    12
-                ],
-                [
-                    7,
-                    13
-                ],
-                [
-                    6,
-                    7
-                ],
-                [
-                    6,
-                    8
-                ],
-                [
-                    7,
-                    9
-                ],
-                [
-                    8,
-                    10
-                ],
-                [
-                    9,
-                    11
-                ],
-                [
-                    2,
-                    3
-                ],
-                [
-                    1,
-                    2
-                ],
-                [
-                    1,
-                    3
-                ],
-                [
-                    2,
-                    4
-                ],
-                [
-                    3,
-                    5
-                ],
-                [
-                    4,
-                    6
-                ],
-                [
-                    5,
-                    7
-                ]
-            ]
-        }
-    ]
+with open(r"resources\json\skeleton_map.json") as json_file:
+    data = json.load(json_file)  
+    json_object["categories"] = data
 
 def load_into_json(filename, data):
     global image_id
@@ -229,11 +128,6 @@ def load_into_json(filename, data):
             }
             json_object["annotations"].append(annotation)
 
-
-        
-
-
-
 def run(img, path):
     detections_boxes = get_detections(img)
     if len(detections_boxes):
@@ -253,8 +147,8 @@ def run(img, path):
     cv2.waitKey(1)
 
 if __name__=="__main__":
-    open_file = True
-    if open_file:
+    file_type = "mp4"
+    if file_type == "img":
         #ask to open a directory
         directory_path = filedialog.askdirectory(title="Select directory")
 
@@ -266,11 +160,20 @@ if __name__=="__main__":
         with open(directory_path + "/data.json", 'w', encoding='utf-8') as f:
             json.dump(json_object, f, ensure_ascii=False, indent=4)
 
-    else:
+    elif file_type == "wbc":
         cap = cv2.VideoCapture(0)
         while True:
             ret, frame = cap.read()
             run(frame)
+    elif file_type == "mp4":
+        #ask to open a directory
+        file_path = filedialog.askopenfile(title="Select file")
+        cap = cv2.VideoCapture(file_path.name)
+        while(cap.isOpened()):
+            path = ""
+            ret, frame = cap.read()
+            # read image
+            run(frame, path)
         
 
     

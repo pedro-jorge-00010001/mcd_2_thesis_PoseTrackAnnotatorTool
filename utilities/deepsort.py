@@ -74,9 +74,8 @@ class deepsort_rbc():
 				crops.append(crop)
 			except:
 				continue
-
- 		
-		crops = torch.stack(crops)
+		if len(crops):
+			crops = torch.stack(crops)
 		return crops
 
 	def extract_features_only(self,frame,coords):
@@ -126,11 +125,11 @@ class deepsort_rbc():
 
 	def run_deep_sort(self, frame, out_scores, out_boxes):
 
-		if out_boxes==[]:			
+		if len(out_boxes) == 0:			
 			self.tracker.predict()
 			print('No detections')
 			trackers = self.tracker.tracks
-			return trackers
+			return trackers, []
 
 		detections = np.array(out_boxes)
 		#features = self.encoder(frame, detections.copy())

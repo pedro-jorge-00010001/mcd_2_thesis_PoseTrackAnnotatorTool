@@ -10,6 +10,7 @@ import utilities.utils as utils
 #assert build_path("C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\", "\\images\\img1.jpg") == "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\img1.jpg"
 #assert build_path("C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\", "\\img1.jpg") == "C:\\Users\\Pedro\\Desktop\\Application\\data\\data_no_ids\\images\\img1.jpg"
 
+color_palette = [(154,205,50),(138,43,226),(233,150,122),(0,255,255),(100,149,237),(0,0,128),(139,0,139),(255,250,205),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(154,205,50),(138,43,226),(233,150,122),(0,255,255),(100,149,237),(0,0,128)]
 
 def draw_box(img, box_points, color = (0,0,0)):
     if box_points is None: return img
@@ -123,24 +124,33 @@ skeleton =  [
                 ]
             ]
 
-def draw_skeleton(img, keypoins, color = (255,255,255)):
+
+def draw_skeleton(img, keypoins, color = (255,255,255), draw_circles = False):
     if keypoins is None: return img
-    for point in keypoins:
-        if point[2]: 
-            img = cv2.circle(img, (int(point[0]), int(point[1])), radius=3, color=color, thickness=3)
+    if draw_circles:
+        for point in keypoins:
+            if point[2]: 
+                img = cv2.circle(img, (int(point[0]), int(point[1])), radius=3, color=color, thickness=3)
     #skeleton lines
+    index = 0
     for line_betwen_points in skeleton:
         #1-17
         skeleton_point_id_1 = line_betwen_points[0] - 1
         skeleton_point_id_2 = line_betwen_points[1] - 1
         point_1 = keypoins[skeleton_point_id_1]
         point_2 = keypoins[skeleton_point_id_2]
+        color = color_palette[index%len(color_palette)]
         if point_1[2] != 0 and point_2[2] != 0:
-            cv2.line(img, (int(point_1[0]), int(point_1[1])), (int(point_2[0]), int(point_2[1])), color=color, thickness=1, lineType=8)
+            cv2.line(img, (int(point_1[0]), int(point_1[1])), (int(point_2[0]), int(point_2[1])), color=color, thickness=2, lineType=8)
+        index += 1
     return img
 
+
+# from kalmanfilter import KalmanFilter
+# kf = KalmanFilter()
+
 def annotate_image(image, image_number, json_data, images_directory_path):    
-    color_palette = [(154,205,50),(138,43,226),(233,150,122),(0,255,255),(100,149,237),(0,0,128),(139,0,139),(255,250,205),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(205,133,63),(240,255,255),(154,205,50),(138,43,226),(233,150,122),(0,255,255),(100,149,237),(0,0,128)]
+
     anotations = json_data["annotations"]
 
     path = utils.build_path(images_directory_path.replace("/", "\\"), image["file_name"].replace("/", "\\"))
@@ -169,6 +179,11 @@ def annotate_image(image, image_number, json_data, images_directory_path):
                 skeleton_points_vector.append(xy_pos)
                 #print(xy_pos)
             img = draw_skeleton(img,skeleton_points_vector, color=current_color)
+            # # temp
+            # left_ear = skeleton_points_vector[0][0:2]
+            # predicted = kf.predict(left_ear[0], left_ear[1])
+            # print(predicted)
+            # img = draw_annotation(img,(predicted[0], predicted[1]), "Pred" , color=(255,255,255))
         except:
             print("Doesn't have skeleton")
 
@@ -224,3 +239,32 @@ def annotate_image(image, image_number, json_data, images_directory_path):
         #else:
             #print("Can't find a position to write annotations") 
     return img, anotations_of_current_image
+
+def remove_distortion(img):
+    width  = img.shape[1]
+    height = img.shape[0]
+
+    distCoeff = np.zeros((4,1),np.float64)
+
+    # TODO: add your coefficients here!
+    k1 = -1.0e-5; # negative to remove barrel distortion
+    k2 = 0.0;
+    p1 = 0.0;
+    p2 = 0.0;
+
+    distCoeff[0,0] = k1;
+    distCoeff[1,0] = k2;
+    distCoeff[2,0] = p1;
+    distCoeff[3,0] = p2;
+
+    # assume unit matrix for camera
+    cam = np.eye(3,dtype=np.float32)
+
+    cam[0,2] = width/2.0  # define center x
+    cam[1,2] = height/2.0 # define center y
+    cam[0,0] = 10.        # define focal length x
+    cam[1,1] = 10.        # define focal length y
+
+    # here the undistortion will be computed
+    dst = cv2.undistort(img,cam,distCoeff)
+    return dst

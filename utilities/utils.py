@@ -3,6 +3,7 @@ from operator import index
 from tkinter import filedialog
 from scipy.spatial import distance
 import numpy as np
+from soupsieve import closest
 
 def get_rectangle_area(rectangle):
     if rectangle is None: return 0
@@ -41,8 +42,6 @@ def get_boxes_diferents_between(boxes_a, boxes_b, maximum_dst = 100):
             if min_distance < maximum_dst:
                 boxes_b = [box for box in boxes_b if distance.euclidean(a_center, get_rectangle_center(box)) != min_distance]
     return boxes_a + boxes_b
-
-assert get_boxes_diferents_between([[0,0,20,20]], [[0,0,10,20], [0,0,30,40]]) == [[0,0,20,20], [0,0,30,40]]
 
 
 
@@ -137,7 +136,7 @@ map_openpose_posetrack = {
     "right_ankle" : [17, 11],
 }
 
-def transform_openpose_skl_to_posetrack_skl(keypoints_openpose):
+def transform_openpose_skl_to_posetrack_skl(keypoints_openpose, skeleton_point_confidence_threshold = 0.15):
     keys = map_openpose_posetrack.keys()
     keypoints = []
     for key in keys:
@@ -146,6 +145,9 @@ def transform_openpose_skl_to_posetrack_skl(keypoints_openpose):
             keypoints.append([0,0,0])
         else:
             openpose_keypoint = keypoints_openpose[openpose_identificator]
+            #Verify that the confidence is greather than the threshold
+            if openpose_keypoint[2] < skeleton_point_confidence_threshold:
+                openpose_keypoint = np.array([0.0, 0.0, 0.0])
             keypoints.append(openpose_keypoint)
     return keypoints
 
@@ -157,7 +159,3 @@ def build_path(images_directory_path, image_path):
             images_directory_path_as_array.append(part_of_path)
     images_directory_path_as_array = [part_of_path for part_of_path in images_directory_path_as_array if part_of_path.strip() != '']
     return "\\".join(images_directory_path_as_array)
-
-
-
-        
