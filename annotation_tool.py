@@ -13,6 +13,7 @@ from PIL import Image
 from PIL import ImageTk
 
 import os
+import numpy as np
 import imutils
 import json
 import cv2
@@ -66,7 +67,12 @@ class Gui:
         pause_images_seq_cmd = master.register(self.pause_images_seq)
         save_annotation_cmd = master.register(self.save_annotation)
         hide_annotations_cmd = master.register(self.hide_annotations)
+        left_key_cmd = master.register(self.left_key)
+        right_key_cmd = master.register(self.right_key)
         
+        self.master.bind('<Left>', left_key_cmd)
+        self.master.bind('<Right>', right_key_cmd)
+
 
         # BUILD INTERFACE
         #   => Menu
@@ -95,8 +101,8 @@ class Gui:
         play_button = Button(self.tools_panel, text = "Play", command = play_images_seq_cmd)
         stop_button = Button(self.tools_panel, text = "Pause", command = pause_images_seq_cmd)
         hide_button = Button(self.tools_panel, text = "Hide/Show anotations", command = hide_annotations_cmd)
-        self.slicer_button = Scale(master, from_=50, to=300, resolution=1, orient=HORIZONTAL, showvalue=False)
-        self.slicer_button.set(167)
+        self.slicer_button = Scale(master, from_=50, to=1000, resolution=1, orient=HORIZONTAL, showvalue=False)
+        self.slicer_button.set(667)
         self.person_selected_label = Label(root, text = "Person Id: " + str(self.person_selected_id))
         self.tools_panel.add(play_button)
         self.tools_panel.add(stop_button)
@@ -105,7 +111,7 @@ class Gui:
         self.tools_panel.add(self.person_selected_label)
         
         #       => GENDER PANEL
-        self.gender_panel = PanedWindow(bd = 4,orient= VERTICAL,width= 200, height=80)
+        self.gender_panel = PanedWindow(bd = 4,orient= VERTICAL, width= 200, height=80)
         label = Label(root, text = "Gender:") 
         r1 = Radiobutton(root, text="Male", value=1, variable=self.gender_selected)
         r2 = Radiobutton(root, text="Female", value=2, variable=self.gender_selected)
@@ -114,7 +120,7 @@ class Gui:
         self.gender_panel.add(r2)
         self.tools_panel.add(self.gender_panel)
         #       =>age panel
-        self.age_panel = PanedWindow(bd = 5,orient= VERTICAL ,width= 100, height=150)
+        self.age_panel = PanedWindow(bd = 5,orient= VERTICAL , width= 100, height=150)
         label = Label(root, text = "Age:")
         a1 = Radiobutton(root, text="Child (00-14 years)", value=1, variable=self.age_group_selected)
         a2 = Radiobutton(root, text="Young (15-24 years)", value=2, variable=self.age_group_selected)
@@ -139,7 +145,19 @@ class Gui:
         self.tools_panel.grid(column=1, row=1)
         self._load_data(annotation_path)
     
- 
+    def left_key(self):
+        self.pause_image_flag = True
+        self.left_images_number += 2
+        self.visualize()
+
+    def right_key(self):
+        # self.left_images_number += 1
+        self.pause_image_flag = True
+        if self.left_images_number == 1 : 
+            self.left_images_number += 1
+
+        self.visualize()
+
     def select_file(self):
         annotation_path = filedialog.askopenfilename(filetypes = [
             ("Json files", ".json")])
@@ -262,19 +280,22 @@ class Gui:
         self._remove_json_info('annotations', value_dict)
         self._remove_json_info('characteristics', value_dict)
         self._remove_json_info('actions', value_dict)
-        
+        self.pause_image_flag = True
         self.left_images_number += 1
         self.visualize()
         #with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
         #    json.dump(self.json_data, f, ensure_ascii=False, indent=4)
     
-    def remove_person_from_json_frame(self, person_slected_id):
+    def remove_person_from_json_frame(self, person_selected_id, annotation_id):
         if 'annotations' in self.json_data:
             element_list = self.json_data['annotations']
-            image_number = len(self.json_data["images"]) - self.left_images_number - 1
-            if list(filter(lambda f: (f["track_id"] == person_slected_id and f["track_id"] == image_number), element_list)):   
-                annotations_except_this = list(filter(lambda f: (f["track_id"] != person_slected_id and f["track_id"] != image_number), element_list))
+            image_number = len(self.json_data["images"]) - self.left_images_number
+            if list(filter(lambda f: (f["id"] == annotation_id and f["track_id"] == person_selected_id and f["image_id"] == image_number), element_list)):   
+                annotations_except_this = list(filter(lambda f: (f["id"] != annotation_id or f["track_id"] != person_selected_id or f["image_id"] != image_number), element_list))
                 self.json_data['annotations'] = annotations_except_this
+        self.pause_image_flag = True
+        self.left_images_number += 1
+        self.visualize()
 
     def change_person_selected_label(self, person_selected_id):
         self.person_selected_label.config(text ="Person Id: " + str(person_selected_id))
@@ -365,8 +386,9 @@ class Gui:
             if self.left_images_number > 0:
                 image_number = len(self.json_data["images"]) - self.left_images_number - 1
                 self.set_image(image_number)
-                if self.pause_image_flag != True:                
-                    self.image_view.after(300 - self.slicer_button.get(), self.visualize)
+                if self.pause_image_flag != True:
+                    velocity = 1001 - self.slicer_button.get()
+                    self.image_view.after(velocity, self.visualize)
 
     def _load_data(self , annotation_path):
         if os.path.exists(annotation_path):
@@ -410,12 +432,12 @@ class Gui:
         current_annotations = None
         if self.show_anotations:
             img, current_annotations = image_annotator.annotate_image(img,image_number, self.json_data,images_directory_path)             
-        else:       
-            img = cv2.imread(utils.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")))
+        else:
+            img = cv2.imdecode(np.fromfile(utils.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")), dtype=np.uint8), cv2.IMREAD_UNCHANGED)
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         current_image_shape = img.shape
         # resize
-        img = imutils.resize(img, width=self.image_view.image_witdh, height=self.image_view.image_height)
+        img = cv2.resize(img, (self.image_view.image_witdh, self.image_view.image_height))
         im = Image.fromarray(img)            
         img = ImageTk.PhotoImage(image=im)
         self.image_view.show_image(img,current_annotations, current_image_shape)

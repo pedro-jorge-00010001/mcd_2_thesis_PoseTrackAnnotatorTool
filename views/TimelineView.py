@@ -17,7 +17,7 @@ class TimelineView(Frame):
 
         #attributes
         self._parent = parent
-        self._left_images_number = 0
+        self._images_number = 0
         #build frame
         self.timeline = TimeLine(
             master = container
@@ -60,7 +60,7 @@ class TimelineView(Frame):
         # get time pointer number
         frame_number = round(float(self.timeline._time_label.cget("text")))
         # update images left
-        self.left_images_number = self._left_images_number - frame_number -1
+        self.left_images_number = self._images_number - frame_number -1
         self._parent.set_image(frame_number)
 
     
@@ -141,9 +141,9 @@ class TimelineView(Frame):
 
 
     #Other methods
-    def update_timeline(self,left_images_number, annotations_track_ids):
+    def update_timeline(self,images_number, annotations_track_ids):
         self.timeline.destroy()
-        self._left_images_number = left_images_number
+        self._images_number = images_number
         
         self.timeline.__init__(master = self._parent.master, 
             height=self.timeline_height, width = self.timeline_width, 
@@ -152,7 +152,7 @@ class TimelineView(Frame):
             resolution= 0.022, tick_resolution = 1.0,
             unit = 's',
             categories={self.get_number_to_string(key):{"text": "Person-{}".format(key)} for key in annotations_track_ids},
-            finish = float(left_images_number-1), snap_margin = 2
+            finish = float(images_number-1), snap_margin = 2
         )
         
         self.timeline.draw_timeline()   
@@ -173,6 +173,12 @@ class TimelineView(Frame):
         
     def set_time(self, time):
         self.timeline.set_time(float(time))
+        
+        if self._images_number != 0 and time - 15:
+            scrool_percentage = (time - 15)/self._images_number
+            self.timeline._canvas_scroll.xview_moveto(scrool_percentage)
+            self.timeline._canvas_ticks.xview_moveto(scrool_percentage)
+        
         try:
             self.timeline._time_label['text'] = str(time)
         except: 

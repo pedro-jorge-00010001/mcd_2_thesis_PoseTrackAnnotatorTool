@@ -70,7 +70,7 @@ class ImageView(Frame):
             #Point
             xP = event.x
             yP = event.y
-            person_selected_id = self._get_selected_person_id(xP,yP)
+            person_selected_id, _ = self._get_selected_person_id(xP,yP)
 
             pop = Toplevel(self.master)
             pop.title("Id: " + str(person_selected_id))
@@ -103,21 +103,21 @@ class ImageView(Frame):
     def _remove_annotation_event(self):
         if self._current_annotations is not None and len(self._current_annotations) and self._point_rclick is not None:
             xP,yP = self._point_rclick
-            person_selected_id = self._get_selected_person_id(xP,yP)
+            person_selected_id, _ = self._get_selected_person_id(xP,yP)
             self._parent.remove_person_from_json(person_selected_id)
 
     def _remove_annotation_from_frame_event(self):
         if self._current_annotations is not None and len(self._current_annotations) and self._point_rclick is not None:
             xP,yP = self._point_rclick
-            person_selected_id = self._get_selected_person_id(xP,yP)
-            self._parent.remove_person_from_json_frame(person_selected_id)
+            person_selected_id, annotation_id = self._get_selected_person_id(xP,yP)
+            self._parent.remove_person_from_json_frame(person_selected_id, annotation_id)
     
     def _image_lclick_event(self, event):
         if self._current_annotations is not None and len(self._current_annotations):
             #Point
             xP = event.x
             yP = event.y
-            person_selected_id = self._get_selected_person_id(xP,yP)
+            person_selected_id, _ = self._get_selected_person_id(xP,yP)
             self._parent.change_person_selected_label(person_selected_id)
     
    
@@ -144,12 +144,15 @@ class ImageView(Frame):
             return False
         
         person_selected_id = None
+        annotation_id = None
+
         #head box
         for current_annotation in self._current_annotations:
             try:
                 box_points = current_annotation["bbox_head"]
                 if is_point_inside_box(box_points, [xP,yP]):
-                    person_selected_id = current_annotation["track_id"]                   
+                    person_selected_id = current_annotation["track_id"]   
+                    annotation_id = current_annotation["id"]                
                     break
             except:
                 pass
@@ -160,10 +163,11 @@ class ImageView(Frame):
                 try:
                     box_points = current_annotation["bbox"]
                     if is_point_inside_box(box_points, [xP,yP]):
-                        person_selected_id = current_annotation["track_id"]                   
+                        person_selected_id = current_annotation["track_id"]
+                        annotation_id = current_annotation["id"]               
                         break
                 except:
                     pass
-        return person_selected_id
+        return person_selected_id, annotation_id
 
     

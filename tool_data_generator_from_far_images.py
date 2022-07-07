@@ -1,21 +1,26 @@
-import tracker_deepsort
+# Here because at this moment the conda enviroments in my pc are in conflict :( sad face
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
+import tool_tracker_deepsort
 import cv2
 from utilities import utils
 import imutils
 import numpy as np
-import skeleton_openpose
+import tool_skeleton_openpose
 from tkinter import filedialog
 import glob
 from utilities import image_annotator
-import person_detector_yolov5
+import tool_person_detector_yolov5
 import json
+import pathlib
 
 def get_detections(img):
     # detect persons
-    detections_boxes = person_detector_yolov5.detect_persons(img)
+    detections_boxes = tool_person_detector_yolov5.detect_persons(img)
     detections_boxes = [utils.trasnform_to_xy(detection) for detection in detections_boxes]
 
-    keypoints, output_image = skeleton_openpose.get_keypoints(img)
+    keypoints, output_image = tool_skeleton_openpose.get_keypoints(img)
     detections_from_skeletons = []
     if keypoints is not None:
         for keypoint in keypoints:
@@ -29,7 +34,7 @@ def get_detections(img):
 def track_and_get_skeletons(img, detections, pixes_around_detection=0, resize_multiplier = 2):
     def clamp(n, minn, maxn):
         return max(min(maxn, n), minn)
-    tracked_data = tracker_deepsort.get_ids_from_image(img, detections)
+    tracked_data = tool_tracker_deepsort.get_ids_from_image(img, detections)
     data = []
     for track in tracked_data:
         id_num = track[0]
@@ -53,7 +58,7 @@ def track_and_get_skeletons(img, detections, pixes_around_detection=0, resize_mu
         #croped_img = img[y:ymax, x:xmax]
         # resize
         croped_img = imutils.resize(croped_img, width=(xmax_crop_reverse-x_crop_reverse)*resize_multiplier, height=(ymax_crop_reverse-y_crop_reverse)*resize_multiplier)
-        keypoints, output_image = skeleton_openpose.get_keypoints(croped_img)
+        keypoints, output_image = tool_skeleton_openpose.get_keypoints(croped_img)
         # cv2.imshow("Data generator", output_image)
         # if cv2.waitKey(10) & 0xFF==ord('q'):
         #     break
@@ -151,15 +156,14 @@ if __name__=="__main__":
     if file_type == "img":
         #ask to open a directory
         directory_path = filedialog.askdirectory(title="Select directory")
-
         #iterate thorugh all the images in the directory
         for path in glob.glob(directory_path + '/*'):
             # read image
             img = cv2.imread(path)
+            #img = image_annotator.remove_distortion(img)
             run(img, path)
         with open(directory_path + "/data.json", 'w', encoding='utf-8') as f:
             json.dump(json_object, f, ensure_ascii=False, indent=4)
-
     elif file_type == "wbc":
         cap = cv2.VideoCapture(0)
         while True:
@@ -168,12 +172,23 @@ if __name__=="__main__":
     elif file_type == "mp4":
         #ask to open a directory
         file_path = filedialog.askopenfile(title="Select file")
+        filename =  str(os.path.basename(file_path.name)).replace(".mp4", "")
+        directory = pathlib.Path(file_path.name).parent.absolute()
+        directory = str(directory) + "\\" + filename
+        if not os.path.exists(directory):
+            os.makedirs(directory)
         cap = cv2.VideoCapture(file_path.name)
+        counter = 0
         while(cap.isOpened()):
-            path = ""
+            counter += 1
+            path = filename + "_" + str(counter) + ".jpg"
+            path_to_save = directory +"\\" + filename + "_" + str(counter) + ".jpg"
             ret, frame = cap.read()
+            cv2.imwrite(path_to_save, frame)   
             # read image
             run(frame, path)
+        with open(directory + "\\data.json", 'w', encoding='utf-8') as f:
+            json.dump(json_object, f, ensure_ascii=False, indent=4)
         
 
     

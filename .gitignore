@@ -2,6 +2,7 @@
 __pycache__/
 /libraries/openpose/
 /libraries/yolo/
+/libraries/
 /.vscode/
 *.pt
 /config.ini

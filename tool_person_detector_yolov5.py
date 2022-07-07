@@ -6,7 +6,15 @@ import cv2
 import glob
 
 #load models
-yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+try:
+    print("Searching model in the libraries")
+    yolo_model = torch.hub.load('ultralytics/yolov5','custom', path= 'libraries\yolo\yolov5\yolov5s.pt')
+except:
+    print("Model not in libraries folder")
+    print("Downloading model and storing it in default folder")
+    yolo_model = torch.hub.load('ultralytics/yolov5', 'yolov5s')
+
+
 yolo_model.classes = [0]
 
 

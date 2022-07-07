@@ -133,31 +133,32 @@ class deepsort_rbc():
 
 		detections = np.array(out_boxes)
 		#features = self.encoder(frame, detections.copy())
+		try:
+			processed_crops = self.pre_process(frame,detections).cpu()
+			processed_crops = 1 * processed_crops
 
-		processed_crops = self.pre_process(frame,detections).cpu()
-		processed_crops = 1 * processed_crops
+			features = self.encoder.forward_once(processed_crops)
+			features = features.detach().cpu().numpy()
 
-		features = self.encoder.forward_once(processed_crops)
-		features = features.detach().cpu().numpy()
-
-		if len(features.shape)==1:
-			features = np.expand_dims(features,0)
+			if len(features.shape)==1:
+				features = np.expand_dims(features,0)
 
 
-		dets = [Detection(bbox, score, feature) \
-					for bbox,score, feature in\
-				zip(detections,out_scores, features)]
+			dets = [Detection(bbox, score, feature) \
+						for bbox,score, feature in\
+					zip(detections,out_scores, features)]
 
-		outboxes = np.array([d.tlwh for d in dets])
+			outboxes = np.array([d.tlwh for d in dets])
 
-		outscores = np.array([d.confidence for d in dets])
-		indices = prep.non_max_suppression(outboxes, 0.8,outscores)
-		
-		dets = [dets[i] for i in indices]
+			outscores = np.array([d.confidence for d in dets])
+			indices = prep.non_max_suppression(outboxes, 0.8,outscores)
+			
+			dets = [dets[i] for i in indices]
 
-		self.tracker.predict()
-		self.tracker.update(dets)	
-
+			self.tracker.predict()
+			self.tracker.update(dets)	
+		except:
+			dets = []
 		return self.tracker,dets
 
 
