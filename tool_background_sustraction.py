@@ -10,6 +10,8 @@ substractorMOG2 = cv2.createBackgroundSubtractorMOG2(detectShadows=False)
 substractorKNN = cv2.createBackgroundSubtractorKNN(detectShadows=False)
 
 
+def run_background_sustraction(img):
+    return img
 if __name__=="__main__": 
     directory_path = filedialog.askdirectory(title="Select directory")
     directory_path += '/*'  

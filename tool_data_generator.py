@@ -1,4 +1,5 @@
 # Here because at this moment the conda enviroments in my pc are in conflict :( sad face
+from multiprocessing.connection import wait
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
@@ -16,7 +17,7 @@ from scipy.spatial import distance
 import pathlib
 import tool_person_detector_yolov5
 from shapely.geometry import Polygon
-
+import shutil
 
 def get_skeletons_with_box(img):
     # detect persons
@@ -28,23 +29,49 @@ def get_skeletons_with_box(img):
 
     keypoints, output_image = tool_skeleton_openpose.get_keypoints(img)
     skeletons_with_box = []
-    if keypoints is not None:
-        for keypoint in keypoints:
-            bbox =  utils.trasnform_to_wh(utils.get_rectangle_from_keypoints(keypoint))
-            bbox_xy = utils.trasnform_to_xy(bbox)
-            x1,y1,x2, y2 = bbox_xy
-            p1 = Polygon([(x1,y1), (x1,y2), (x2, y1), (x2, y2)])
-            for det_bbox in detections_boxes:      
-                det_bbox_xy = utils.trasnform_to_xy(det_bbox)
-                x1,y1,x2, y2 = det_bbox_xy
-                p2 = Polygon([(x1,y1), (x1,y2), (x2, y1), (x2, y2)])
-                difference = np.sum(np.abs((np.array(bbox_xy) - np.array(det_bbox_xy))))
-                if difference < 60 and p1.intersects(p2):
-                    bbox = det_bbox
-                    break
-            keypoint = utils.transform_openpose_skl_to_posetrack_skl(keypoint)
-            skeletons_with_box.append((bbox, keypoint))
 
+    if len(detections_boxes):
+        for det_bbox in detections_boxes:
+            new_keypoints = []
+            det_bbox_xy = utils.trasnform_to_xy(det_bbox)
+            x1,y1,x2, y2 = det_bbox_xy
+            p2 = Polygon([(x1,y1), (x1,y2), (x2, y1), (x2, y2)])
+            
+            skeleton = None
+            if keypoints is not None:
+                last_distance = 99999999
+                last_skeleton = None
+                for skl_bbox in keypoints:
+                    bbox =  utils.trasnform_to_wh(utils.get_rectangle_from_keypoints(skl_bbox))
+                    bbox_xy = utils.trasnform_to_xy(bbox)
+                    x1,y1,x2, y2 = bbox_xy
+                    p1 = Polygon([(x1,y1), (x1,y2), (x2, y1), (x2, y2)])
+
+                    #difference = np.sum(np.abs((np.array(bbox_xy) - np.array(det_bbox_xy))))
+                    if p1.intersects(p2):
+                        dst = distance.euclidean(utils.get_rectangle_center(utils.trasnform_to_xy(det_bbox)), utils.get_rectangle_center(utils.trasnform_to_xy(bbox)))
+                        if dst < last_distance:
+                            last_distance = dst
+                            skeleton = utils.transform_openpose_skl_to_posetrack_skl(skl_bbox)
+                            if last_skeleton is not None:
+                                new_keypoints.append(last_skeleton)
+                            last_skeleton = skl_bbox
+                    else:
+                        new_keypoints.append(skl_bbox)
+                
+                if skeleton is None:
+                    skeleton = get_skeleton_from_crop(img, det_bbox)
+                
+                keypoints = new_keypoints
+
+            skeletons_with_box.append((det_bbox, skeleton))
+        
+        if keypoints is not None:
+            for skl_bbox in keypoints:
+                bbox =  utils.trasnform_to_wh(utils.get_rectangle_from_keypoints(skl_bbox))
+                skeleton = utils.transform_openpose_skl_to_posetrack_skl(skl_bbox)
+                skeletons_with_box.append((bbox, skeleton))
+    
     return skeletons_with_box
 
 def track_skeletons_with_box(img, skeletons_with_box):
@@ -87,9 +114,6 @@ def get_skeleton_from_crop(img, bbox_crop, pixes_around_detection=10, resize_mul
     # resize
     croped_img = imutils.resize(croped_img, width=(xmax_crop_reverse-x_crop_reverse)*resize_multiplier, height=(ymax_crop_reverse-y_crop_reverse)*resize_multiplier)
     keypoints, output_image = tool_skeleton_openpose.get_keypoints(croped_img)
-    # cv2.imshow("Data generator", output_image)
-    # if cv2.waitKey(10) & 0xFF==ord('q'):
-    #     break
     if keypoints is not None:
         #get back points
         keypoints_updated = []
@@ -169,23 +193,13 @@ def run(img):
             img = image_annotator.draw_annotation(img, (bbox_detection[0], bbox_detection[1]),"Id:" + str(person_id), color=(255,255,255))
             img = image_annotator.draw_skeleton(img, keypoints, color=(255,255,255))
             
-            # if keypoints is not None:
-            #     left_ear = keypoints[3]
-            #     lef_ankle = keypoints[15]
-            #     if left_ear[2] != 0 and lef_ankle[2] != 0:
-            #         print("---")
-            #         height = distance.euclidean(lef_ankle[0:2], left_ear[0:2])
-            #         print(height)
-            #         img = image_annotator.draw_annotation(img, (bbox_detection[0], bbox_detection[1]),"Hg:" + str(int(height)), color=(255,0,255))
-
     #Load info into json
-    load_into_json(path , skeletons_with_box_id)
+    # load_into_json(path , skeletons_with_box_id)
     cv2.imshow("Data generator", img)
-    #cv2.waitKey(0)
     cv2.waitKey(1)
 
 if __name__=="__main__":
-    file_type = "mp4"
+    file_type = "img"
     if file_type == "img":
         #ask to open a directory
         directory_path = filedialog.askdirectory(title="Select directory")
@@ -204,7 +218,6 @@ if __name__=="__main__":
             run(frame)
     elif file_type == "mp4":
         #ask to open a directory
-        # file_path = filedialog.askopenfile(title="Select file")
 
         directory_path = filedialog.askdirectory(title="Select directory")
         #iterate thorugh all the images in the directory
@@ -226,6 +239,7 @@ if __name__=="__main__":
                     break
                 # read image
                 run(frame)
+
             with open(directory + "\\data.json", 'w', encoding='utf-8') as f:
                 json.dump(json_object, f, ensure_ascii=False, indent=4)
 
@@ -238,3 +252,6 @@ if __name__=="__main__":
             with open(r"resources\json\skeleton_map.json") as json_file:
                 data = json.load(json_file)  
                 json_object["categories"] = data
+
+
+            shutil.make_archive(directory, 'zip', directory)

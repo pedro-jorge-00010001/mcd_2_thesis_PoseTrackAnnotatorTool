@@ -22,7 +22,6 @@ import utilities.utils as utils
 import  utilities.image_annotator as image_annotator
 from enums.AgeGroup import AgeGroup
 from enums.Gender import Gender
-
 from configparser import ConfigParser
 
 class Gui:
