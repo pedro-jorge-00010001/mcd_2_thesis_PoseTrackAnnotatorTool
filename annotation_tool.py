@@ -23,6 +23,16 @@ import  utilities.image_annotator as image_annotator
 from enums.AgeGroup import AgeGroup
 from enums.Gender import Gender
 from configparser import ConfigParser
+import re
+class LazyDecoder(json.JSONDecoder):
+    def decode(self, s, **kwargs):
+        regex_replacements = [
+            (re.compile(r'([^\\])\\([^\\])'), r'\1\\\\\2'),
+            (re.compile(r',(\s*])'), r'\1'),
+        ]
+        for regex, replacement in regex_replacements:
+            s = regex.sub(replacement, s)
+        return super().decode(s, **kwargs)
 
 class Gui:
     
@@ -47,6 +57,7 @@ class Gui:
         self.config = ConfigParser()
         self.config.read('config.ini')
         annotation_path = self.config['paths']['annotation_path']
+        last_frame = self.config['frames']['frame_id']
 
         # initialize object variables
         self.json_data = None
@@ -142,7 +153,7 @@ class Gui:
         self.image_view.grid(column=0, row=1)
         self.timeline_view.grid(column=None, row=2)
         self.tools_panel.grid(column=1, row=1)
-        self._load_data(annotation_path)
+        self._load_data(annotation_path, int(last_frame))
     
     def left_key(self):
         self.pause_image_flag = True
@@ -162,7 +173,7 @@ class Gui:
             ("Json files", ".json")])
         self.stop_current_vid = True
         if len(annotation_path) > 0:
-            self._load_data(annotation_path)
+            self._load_data(annotation_path, 0)
         else:
             self.image.image = ""
             self.path_label.configure(text = self.config['paths']['annotation_path'])
@@ -187,7 +198,7 @@ class Gui:
                 with open(file_path) as json_file:
                     data = json.load(json_file)       
                 self.json_data = data
-                self.left_images_number = len(self.json_data["images"])
+                # self.left_images_number = len(self.json_data["images"])
                 self.visualize()
     
     def hide_annotations(self):
@@ -270,6 +281,12 @@ class Gui:
             self.json_data[topic] = annotations_new
 
 
+    def go_to_person_frame(self, person_selected_id):
+        element_list = self.json_data['annotations']
+        annotations_of_person_selected = list(filter(lambda f: (f["track_id"] == person_selected_id ), element_list))
+        image_id = int(annotations_of_person_selected[0]["image_id"])
+        self.set_image(image_id)
+        pass
 
     def remove_person_from_json(self, person_selected_id):
         value_dict = {
@@ -282,6 +299,7 @@ class Gui:
         self.pause_image_flag = True
         self.left_images_number += 1
         self.visualize()
+        self.save_current_frame_id()
         #with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
         #    json.dump(self.json_data, f, ensure_ascii=False, indent=4)
     
@@ -295,6 +313,7 @@ class Gui:
         self.pause_image_flag = True
         self.left_images_number += 1
         self.visualize()
+        self.save_current_frame_id()
 
     def change_person_selected_label(self, person_selected_id):
         self.person_selected_label.config(text ="Person Id: " + str(person_selected_id))
@@ -312,6 +331,7 @@ class Gui:
             else:
                 self.gender_selected.set(0)
                 self.age_group_selected.set(0)
+        self.save_current_frame_id()
     
 
     def save_annotation(self):
@@ -349,6 +369,7 @@ class Gui:
         self.visualize()
         with open(self.path_label.cget("text"), 'w', encoding='utf-8') as f:
             json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+        self.save_current_frame_id()
         
 
     def _remove_json_info(self, topic, value_dict):
@@ -377,6 +398,7 @@ class Gui:
 
     def pause_images_seq(self):
         self.pause_image_flag = True
+        self.save_current_frame_id()
 
     def visualize(self):
         #update images left
@@ -389,7 +411,7 @@ class Gui:
                     velocity = 1001 - self.slicer_button.get()
                     self.image_view.after(velocity, self.visualize)
 
-    def _load_data(self , annotation_path):
+    def _load_data(self , annotation_path, last_image):
         if os.path.exists(annotation_path):
 
             self.path_label.configure(text = annotation_path)
@@ -398,16 +420,17 @@ class Gui:
                 self.config.write(configfile)
             
             with open(annotation_path) as json_file:
-                    data = json.load(json_file)       
+                data = json.load(json_file, cls=LazyDecoder)       
             self.json_data = data
             self.left_images_number = len(self.json_data["images"])
             
             annotations = self.json_data["annotations"]
             annotations_track_ids = [x['track_id'] for x in annotations]
             annotations_track_ids = list(sorted(set(annotations_track_ids)))
-
-            if os.path.exists(utils.build_path(self.config['paths']['image_path'], self.json_data["images"][0]["file_name"])):
+            path = utils.build_path(self.config['paths']['image_path'].replace("/", "\\"), self.json_data["images"][0]["file_name"].replace("/", "\\"))
+            if os.path.exists(path):
                 self.set_image(0)
+        
             else:
                 messagebox.showerror(title="Image not found", message="The image referenced by the annotation cannot be found\nPlease verify the images path")
 
@@ -416,6 +439,7 @@ class Gui:
             
             #Load timeline data
             self.timeline_view.load_data(self.json_data.get("actions", None))
+            self.set_image(last_image)
         else:
             messagebox.showerror(title="Annotation not found", message="The selected annotation doesn't exist\nPlease verify the path or select other annotation")
 
@@ -440,6 +464,12 @@ class Gui:
         im = Image.fromarray(img)            
         img = ImageTk.PhotoImage(image=im)
         self.image_view.show_image(img,current_annotations, current_image_shape)
+        self.config.set('frames', 'frame_id', str(image_number))
+
+
+    def save_current_frame_id(self):
+        with open('config.ini', 'w') as configfile:
+            self.config.write(configfile)
 
 root = Tk()
 my_gui = Gui(root)

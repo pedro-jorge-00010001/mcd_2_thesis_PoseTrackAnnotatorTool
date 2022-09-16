@@ -1,4 +1,7 @@
+
+from ctypes import util
 from tkinter import *
+from utilities import utils
 
 class ImageView(Frame):
 
@@ -162,10 +165,12 @@ class ImageView(Frame):
             for current_annotation in self._current_annotations:
                 try:
                     box_points = current_annotation["bbox"]
-                    if is_point_inside_box(box_points, [xP,yP]):
+                    area = 999999999999999
+                    calculated_area = utils.get_rectangle_area(utils.trasnform_to_xy(box_points))
+                    if is_point_inside_box(box_points, [xP,yP]) and calculated_area < area:
                         person_selected_id = current_annotation["track_id"]
-                        annotation_id = current_annotation["id"]               
-                        break
+                        annotation_id = current_annotation["id"]
+                        area = calculated_area 
                 except:
                     pass
         return person_selected_id, annotation_id

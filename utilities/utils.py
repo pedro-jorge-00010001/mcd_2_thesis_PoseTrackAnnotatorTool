@@ -158,4 +158,4 @@ def build_path(images_directory_path, image_path):
         if part_of_path not in images_directory_path_as_array:
             images_directory_path_as_array.append(part_of_path)
     images_directory_path_as_array = [part_of_path for part_of_path in images_directory_path_as_array if part_of_path.strip() != '']
-    return "\\".join(images_directory_path_as_array)
+    return "/".join(images_directory_path_as_array)

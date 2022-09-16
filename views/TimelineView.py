@@ -65,6 +65,12 @@ class TimelineView(Frame):
 
     
     def double_click_event(self, event):
+        def get_number_from_phrase(text):
+            vector = text.split("-")
+            if len(vector) > 1:
+                return int(vector[1])
+            return 0
+
         def click_cancel():
             self.timeline.update_marker(iid, background=tag_brackground)
             pop.destroy()
@@ -93,6 +99,8 @@ class TimelineView(Frame):
         self.timeline.update_active()
         iid = self.timeline.current_iid
         if iid is None:
+            value_at_index = get_number_from_phrase(list(self.timeline._categories.values())[event.y//20]["text"])
+            self._parent.go_to_person_frame(value_at_index)
             return
         
         selected_tag = self.timeline._markers[iid]

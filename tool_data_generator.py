@@ -3,6 +3,7 @@ from multiprocessing.connection import wait
 import os
 os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
+
 from utilities import utils
 import tool_skeleton_openpose
 import cv2
@@ -15,14 +16,22 @@ import imutils
 import json
 from scipy.spatial import distance
 import pathlib
-import tool_person_detector_yolov5
+import tool_person_detector_yolov7
 from shapely.geometry import Polygon
 import shutil
+
+
+
+import tensorflow as tf
+# Avoid OOM errors by setting GPU Memory Consumption Growth
+gpus = tf.config.experimental.list_physical_devices('GPU')
+for gpu in gpus: 
+    tf.config.experimental.set_memory_growth(gpu, True)
 
 def get_skeletons_with_box(img):
     # detect persons
     try:
-        detections_boxes = tool_person_detector_yolov5.detect_persons(img)
+        detections_boxes = tool_person_detector_yolov7.detect_persons(img)
     except:
         detections_boxes = []
     # detections_boxes = [utils.trasnform_to_xy(detection) for detection in detections_boxes]
@@ -112,20 +121,25 @@ def get_skeleton_from_crop(img, bbox_crop, pixes_around_detection=10, resize_mul
     croped_img = img[y_crop_reverse:ymax_crop_reverse, x_crop_reverse:xmax_crop_reverse]
     #croped_img = img[y:ymax, x:xmax]
     # resize
-    croped_img = imutils.resize(croped_img, width=(xmax_crop_reverse-x_crop_reverse)*resize_multiplier, height=(ymax_crop_reverse-y_crop_reverse)*resize_multiplier)
-    keypoints, output_image = tool_skeleton_openpose.get_keypoints(croped_img)
-    if keypoints is not None:
-        #get back points
-        keypoints_updated = []
-        for points in keypoints[0]:
-            xp, yp, cf = points
-            xp = xp/resize_multiplier + x_crop_reverse
-            yp = yp/resize_multiplier + y_crop_reverse
-            keypoints_updated.append([xp, yp, cf])
+    try:
+        croped_img = imutils.resize(croped_img, width=(xmax_crop_reverse-x_crop_reverse)*resize_multiplier, height=(ymax_crop_reverse-y_crop_reverse)*resize_multiplier)
+        keypoints, output_image = tool_skeleton_openpose.get_keypoints(croped_img)
+        if keypoints is not None:
+            #get back points
+            keypoints_updated = []
+            for points in keypoints[0]:
+                xp, yp, cf = points
+                xp = xp/resize_multiplier + x_crop_reverse
+                yp = yp/resize_multiplier + y_crop_reverse
+                keypoints_updated.append([xp, yp, cf])
 
-        keypoints = utils.transform_openpose_skl_to_posetrack_skl(keypoints_updated)
+            keypoints = utils.transform_openpose_skl_to_posetrack_skl(keypoints_updated)
 
-    return keypoints
+        return keypoints
+    except: 
+        return None
+    
+   
 
 #Save data into json file
 image_id = 0
@@ -188,29 +202,50 @@ def run(img):
     skeletons_with_box_id = track_skeletons_with_box(img, skeletons_with_box)
 
     for elem in skeletons_with_box_id:
-            person_id, bbox_detection, keypoints = elem
-            img = image_annotator.draw_box(img, bbox_detection, color=(255,255,255))
-            img = image_annotator.draw_annotation(img, (bbox_detection[0], bbox_detection[1]),"Id:" + str(person_id), color=(255,255,255))
-            img = image_annotator.draw_skeleton(img, keypoints, color=(255,255,255))
+        person_id, bbox_detection, keypoints = elem
+        img = image_annotator.draw_box(img, bbox_detection, color=(255,255,255))
+        img = image_annotator.draw_annotation(img, (bbox_detection[0], bbox_detection[1]),"Id:" + str(person_id), color=(255,255,255))
+        img = image_annotator.draw_skeleton(img, keypoints, color=(255,255,255))
             
     #Load info into json
-    # load_into_json(path , skeletons_with_box_id)
+    load_into_json(path , skeletons_with_box_id)
     cv2.imshow("Data generator", img)
     cv2.waitKey(1)
 
+def write_json(directory_path, filename = None):
+    global json_object
+    splited_vector = directory_path.split("/")
+    video_name = splited_vector[len(splited_vector)-1]
+    if filename is not None:
+        video_name = filename
+    with open(directory_path + "/" + video_name + ".json", 'w', encoding='utf-8') as f:
+        json.dump(json_object, f, ensure_ascii=False, indent=4)
+
 if __name__=="__main__":
-    file_type = "img"
+    file_type = "mp4"
     if file_type == "img":
         #ask to open a directory
         directory_path = filedialog.askdirectory(title="Select directory")
+
+        #Get just the images on the current folder
+        ext = [ 'PNG','png', 'jpg', 'gif']    # Add image formats here
+        files = []
+
+        for e in ext:
+            path = directory_path + '/*.' + e
+            current_files = glob.glob(path)
+            if len(current_files):
+                files.extend(current_files)
+                break
+            
         #iterate thorugh all the images in the directory
-        for path in glob.glob(directory_path + '/*'):
+        for path in files:
             # read image
             img = cv2.imread(path)
             #img = image_annotator.remove_distortion(img)
             run(img)
-        with open(directory_path + "/data.json", 'w', encoding='utf-8') as f:
-            json.dump(json_object, f, ensure_ascii=False, indent=4)
+        
+        write_json(directory_path)
     elif file_type == "wbc":
         cap = cv2.VideoCapture(0)
         while True:
@@ -234,14 +269,14 @@ if __name__=="__main__":
                 path = filename + "_" + str(counter) + ".jpg"
                 path_to_save = directory +"\\" + filename + "_" + str(counter) + ".jpg"
                 ret, frame = cap.read()
-                cv2.imwrite(path_to_save, frame)  
+                if frame is not None:
+                    cv2.imwrite(path_to_save, frame)  
                 if frame is None:
                     break
                 # read image
                 run(frame)
-
-            with open(directory + "\\data.json", 'w', encoding='utf-8') as f:
-                json.dump(json_object, f, ensure_ascii=False, indent=4)
+            
+            write_json(directory_path, filename = filename)
 
             #Save data into json file
             image_id = 0
@@ -253,5 +288,4 @@ if __name__=="__main__":
                 data = json.load(json_file)  
                 json_object["categories"] = data
 
-
-            shutil.make_archive(directory, 'zip', directory)
+            # shutil.make_archive(directory, 'zip', directory)

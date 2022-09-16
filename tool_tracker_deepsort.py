@@ -19,6 +19,9 @@ import re
 deepsort = deepsort_rbc()
 
 
+def reset_tracker():
+    deepsort = deepsort_rbc()
+
 def get_gt(images, annotations, frame_id):
     image = images[frame_id]
     annotations = json_data['annotations']

@@ -1,6 +1,4 @@
 
-
-
 import json
 from tkinter import filedialog
 from utilities import utils
@@ -11,6 +9,7 @@ from math import atan2, cos, sin, sqrt, pi
 from libraries.human_silhouette_extractor import human_silhoutte_extractor
 import math
 import re
+import csv
 
 def clamp(n, minn, maxn):
         return max(min(maxn, n), minn)
@@ -101,12 +100,17 @@ def rotate_image(mat, angle):
     rotated_mat = cv.warpAffine(mat, rotation_mat, (bound_w, bound_h))
     return rotated_mat
 
+
+def remove_black_borders(image):
+    y_nonzero, x_nonzero, _ = np.nonzero(image)
+    if not len(y_nonzero) and not len(x_nonzero):
+      return image
+    return image[np.min(y_nonzero):np.max(y_nonzero), np.min(x_nonzero):np.max(x_nonzero)]
+
 annotation_path = filedialog.askopenfilename(filetypes = [("Json files", ".json")])
 #annotation_path = r"C:/Users/pedroj/Desktop/Projects/PoseTrackAnnotatorTool/data/annotations/000001_bonn_train.json"
-print(annotation_path)
 directory_path = filedialog.askdirectory(title="Select directory")
 #directory_path = r"C:/Users/pedroj/Desktop/Projects/PoseTrackAnnotatorTool/data/images"
-print(directory_path)
 data = None
 
 with open(annotation_path) as json_file:
@@ -114,6 +118,8 @@ with open(annotation_path) as json_file:
 
 annotations = data["annotations"]
 images = data["images"]
+
+dict_data = dict()
 
 for annotation in annotations:
 
@@ -164,26 +170,73 @@ for annotation in annotations:
         new_points.append(keypoints[11])
         # point_line_top = (int((keypoints[5][0] + keypoints[6][0])/2), int((keypoints[5][1] + keypoints[6][1])/2) , 1)
         # point_line_down = (int((keypoints[12][0] + keypoints[11][0])/2), int((keypoints[11][1] + keypoints[11][1])/2), 1)
+        final = remove_black_borders(final)
         
-        
-        angle = getOrientation(new_points, final)
-        angle = -(180 -int(np.rad2deg(angle)) - 90)
-        print(angle)
-        final = rotate_image(final, angle)
-        cv.imshow('Final Image', final)
+        # counting the number of pixels
+        number_of_non_black_pix = np.sum(final != 0)
+        number_of_black_pix = np.sum(final == 0)
+        percentage_of_black_pix = number_of_black_pix/(number_of_non_black_pix + number_of_black_pix)
+        print('Percetange of black pixels', percentage_of_black_pix)
 
-        # How to save it
-        # video_id | frame_number | person_id | gender | age_group |image_path | keypoints
+        # Filter silhoute bad extractions
+        #The percentage of black cannot be greather than 70%
+        if (int(percentage_of_black_pix*100) <= 70):
+          # angle = getOrientation(new_points, final)
+          # angle = -(180 -int(np.rad2deg(angle)) - 90)
+          # #print(angle)
+          
+          # final = rotate_image(final, angle)
+          # final = remove_black_borders(final)
+          #cv.imshow('Final Image', final)
 
-        cv.waitKey(1000)
-        cv.destroyAllWindows()
-        
+          # How to save it
+          csv_columns = ['video_id','frame_number','person_id','gender','age_group','image_path','keypoints']
+          splited_vector = directory_path.split("/")
+          #video_id
+          video_id = splited_vector[len(splited_vector)-1]
+          #person_id
+          person_id = annotation['track_id']
+          #gender
+          current_person_other_info = list(filter(lambda f: (f["track_id"] == person_id), data["characteristics"]))[0]
+          gender = current_person_other_info["gender"]
+          #age_group
+          age_group = current_person_other_info["age_group"]
+          #keypoints
+          keypoints = annotation['keypoints']
+
+          skeleton_points_vector = []
+          #skeleton points
+          for i in range(1,len(keypoints)//3 + 1):
+              end_pos = 3*i
+              start_pos = end_pos - 3
+              sk_point = keypoints[start_pos:end_pos]
+              x_sk = max(sk_point[0] - x, 0)
+              y_sk = max(sk_point[1] - y, 0)
+              p_sk = sk_point[2]
+              skeleton_points_vector.append(x_sk)
+              skeleton_points_vector.append(y_sk)
+              skeleton_points_vector.append(p_sk)
+
+          frame_number = image["frame_id"]
+
+          image_path = "data\\train_models_data\\images\\" + video_id + "_" + str(frame_number) +"_" + str(person_id)+ ".jpg"
+          dict_data[video_id + "_" + str(frame_number) +"_" + str(person_id)] = {'video_id' : video_id, 'frame_number' : frame_number, 
+          'person_id' : person_id, 'gender' : gender, 'age_group' : age_group, 'image_path' : image_path, 'keypoints': skeleton_points_vector}
+          
+          # final = image_annotator.draw_skeleton(final, skeleton_points_vector)
+          cv.imwrite(image_path, final)
+          #Key: video_id + frame_number + person_id
+          # cv.waitKey(200)
+          # cv.destroyAllWindows()
 
 
 
-
+csv_file = "data\\train_models_data\\data.csv"
+with open(csv_file, 'w', newline='') as csvfile:
+    writer = csv.DictWriter(csvfile, fieldnames=csv_columns, delimiter=";")
+    writer.writeheader()
+    for key, value in dict_data.items():
+      writer.writerow(value)
 # annotations_track_ids = [x['track_id'] for x in annotations]
 # annotations_track_ids = list(sorted(set(annotations_track_ids)))
 
-
-     
