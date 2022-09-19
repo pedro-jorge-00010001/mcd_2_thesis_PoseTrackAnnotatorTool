@@ -45,6 +45,9 @@ class ImageView(Frame):
     
     def grid(self, column, row ):
         self._image.grid(column = column, row = row)
+    
+    def pack(self, expand=None, fill=None, side=None):
+        self._image.pack(expand = expand, fill = fill, side = side)
 
     def show_image(self, img, current_annotations, image_shape = (0,0,0)):
         self._current_image_shape = image_shape

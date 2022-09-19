@@ -31,6 +31,9 @@ class TimelineView(Frame):
     def grid(self, column, row ):
         self.timeline.grid(row=row)
 
+    def pack(self, expand=None, fill=None, side=None):
+        self.timeline.pack(expand = expand, fill = fill, side = side)
+
     #Events
     def add_action_event(self):
         try:

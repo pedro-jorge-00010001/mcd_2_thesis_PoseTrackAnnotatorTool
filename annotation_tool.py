@@ -19,20 +19,11 @@ import json
 import cv2
 
 import utilities.utils as utils
-import  utilities.image_annotator as image_annotator
+import utilities.image_annotator as image_annotator
 from enums.AgeGroup import AgeGroup
 from enums.Gender import Gender
 from configparser import ConfigParser
-import re
-class LazyDecoder(json.JSONDecoder):
-    def decode(self, s, **kwargs):
-        regex_replacements = [
-            (re.compile(r'([^\\])\\([^\\])'), r'\1\\\\\2'),
-            (re.compile(r',(\s*])'), r'\1'),
-        ]
-        for regex, replacement in regex_replacements:
-            s = regex.sub(replacement, s)
-        return super().decode(s, **kwargs)
+from utilities.lazy_decoder import LazyDecoder
 
 class Gui:
     
@@ -51,7 +42,7 @@ class Gui:
         master.title('AnnotationTool')
         
         #Source: <a href="https://www.flaticon.com/free-icons/edit" title="edit icons">Edit icons created by Kiranshastry - Flaticon</a>
-        root.iconbitmap(r"resources\images\edit.ico")
+        root.iconbitmap(r"resources/images/edit.ico")
     
         # load configurations
         self.config = ConfigParser()
@@ -62,21 +53,21 @@ class Gui:
         # initialize object variables
         self.json_data = None
         self.left_images_number = 0
-        self.stop_current_vid = False
+        self.pause_bool = False
         self.pause_image_flag = False
         
         self.gender_selected = IntVar(master)
         self.age_group_selected = IntVar(master)
         self.person_selected_id = None
-        self.show_anotations = True
+        self.show_annotations_bool = True
 
         # REGISTER BUTTONS COMMANDS
         select_file_cmd = master.register(self.select_file)
         select_default_data_path = master.register(self.select_default_data_path)
-        play_images_seq_cmd = master.register(self.play_images_seq)
-        pause_images_seq_cmd = master.register(self.pause_images_seq)
-        save_annotation_cmd = master.register(self.save_annotation)
-        hide_annotations_cmd = master.register(self.hide_annotations)
+        play_images_seq_cmd = master.register(self.play_event)
+        pause_images_seq_cmd = master.register(self.pause_event)
+        save_annotation_cmd = master.register(self.save_event)
+        hide_annotations_cmd = master.register(self.hide_event)
         left_key_cmd = master.register(self.left_key)
         right_key_cmd = master.register(self.right_key)
         
@@ -96,7 +87,7 @@ class Gui:
         
         #       => Settings 
         self.settings_menu = Menu(self.menu, tearoff=0)
-        self.settings_menu.add_command(label="Change Default Images Path", command= select_default_data_path)
+        self.settings_menu.add_command(label="Chose mp4", command= select_default_data_path)
 
         self.menu.add_cascade(label = "File", menu=self.file_menu)
         self.menu.add_cascade(label = "Settings", menu=self.settings_menu)
@@ -109,13 +100,13 @@ class Gui:
         #   => TOOLS PANEL
         self.tools_panel = PanedWindow(bd = 4,orient= VERTICAL, width= 200, height=450)
         play_button = Button(self.tools_panel, text = "Play", command = play_images_seq_cmd)
-        stop_button = Button(self.tools_panel, text = "Pause", command = pause_images_seq_cmd)
+        pause_button = Button(self.tools_panel, text = "Pause", command = pause_images_seq_cmd)
         hide_button = Button(self.tools_panel, text = "Hide/Show anotations", command = hide_annotations_cmd)
         self.slicer_button = Scale(master, from_=50, to=1000, resolution=1, orient=HORIZONTAL, showvalue=False)
         self.slicer_button.set(667)
         self.person_selected_label = Label(root, text = "Person Id: " + str(self.person_selected_id))
         self.tools_panel.add(play_button)
-        self.tools_panel.add(stop_button)
+        self.tools_panel.add(pause_button)
         self.tools_panel.add(hide_button)
         self.tools_panel.add(self.slicer_button)
         self.tools_panel.add(self.person_selected_label)
@@ -153,6 +144,8 @@ class Gui:
         self.image_view.grid(column=0, row=1)
         self.timeline_view.grid(column=None, row=2)
         self.tools_panel.grid(column=1, row=1)
+
+        self.cap = cv2.VideoCapture(self.config['paths']['video_path'])
         self._load_data(annotation_path, int(last_frame))
     
     def left_key(self):
@@ -168,10 +161,11 @@ class Gui:
 
         self.visualize()
 
+    # Done
     def select_file(self):
         annotation_path = filedialog.askopenfilename(filetypes = [
             ("Json files", ".json")])
-        self.stop_current_vid = True
+        self.pause_bool = True
         if len(annotation_path) > 0:
             self._load_data(annotation_path, 0)
         else:
@@ -179,15 +173,16 @@ class Gui:
             self.path_label.configure(text = self.config['paths']['annotation_path'])
 
     def select_default_data_path(self):
-        directory_path = filedialog.askdirectory(title="Select directory")
-        self.stop_current_vid = True
-        if len(directory_path) > 0:
-            self.config.set('paths', 'image_path', directory_path)
+        annotation_path = filedialog.askopenfilename(filetypes = [
+            ("Open mp4 file", ".mp4")])
+        self.pause_bool = True
+        if len(annotation_path) > 0:
+            self.config.set('paths', 'video_path', annotation_path)
             with open('config.ini', 'w') as configfile:
                 self.config.write(configfile)
 
-    def play_images_seq(self):
-        self.stop_current_vid = False   
+    def play_event(self):
+        self.pause_bool = False   
         file_path = self.path_label.cget("text")
         if self.pause_image_flag == True:
             self.pause_image_flag = False
@@ -201,9 +196,9 @@ class Gui:
                 # self.left_images_number = len(self.json_data["images"])
                 self.visualize()
     
-    def hide_annotations(self):
+    def hide_event(self):
         self.left_images_number += 1
-        self.show_anotations = not self.show_anotations
+        self.show_annotations_bool = not self.show_annotations_bool
         self.visualize()
 
     def update_person_id_in_json(self, person_selected_id, new_person_id, option = "n"):
@@ -334,7 +329,7 @@ class Gui:
         self.save_current_frame_id()
     
 
-    def save_annotation(self):
+    def save_event(self):
         markers = self.timeline_view.get_markers()
         self.json_data['actions'] = []
         
@@ -396,14 +391,14 @@ class Gui:
         else:
             self.json_data[topic] = [value_dict]
 
-    def pause_images_seq(self):
+    def pause_event(self):
         self.pause_image_flag = True
         self.save_current_frame_id()
 
     def visualize(self):
         #update images left
         self.left_images_number -= 1
-        if self.json_data != None and self.stop_current_vid != True:
+        if self.json_data != None and self.pause_bool != True:
             if self.left_images_number > 0:
                 image_number = len(self.json_data["images"]) - self.left_images_number - 1
                 self.set_image(image_number)
@@ -427,13 +422,7 @@ class Gui:
             annotations = self.json_data["annotations"]
             annotations_track_ids = [x['track_id'] for x in annotations]
             annotations_track_ids = list(sorted(set(annotations_track_ids)))
-            path = utils.build_path(self.config['paths']['image_path'].replace("/", "\\"), self.json_data["images"][0]["file_name"].replace("/", "\\"))
-            if os.path.exists(path):
-                self.set_image(0)
-        
-            else:
-                messagebox.showerror(title="Image not found", message="The image referenced by the annotation cannot be found\nPlease verify the images path")
-
+            
             # update timeline
             self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
             
@@ -449,15 +438,19 @@ class Gui:
             image_number = 0
         self.left_images_number = len(self.json_data["images"]) - image_number - 1
         self.timeline_view.set_time(float(image_number))
+        # To do:
+        # self.timeline_view.set_time(float(image_number))
         # get image
-        img = self.json_data["images"][image_number]
-        images_directory_path = self.config['paths']['image_path']
+        img_json = self.json_data["images"][image_number]
         current_annotations = None
-        if self.show_anotations:
-            img, current_annotations = image_annotator.annotate_image(img,image_number, self.json_data,images_directory_path)             
-        else:
-            img = cv2.imdecode(np.fromfile(utils.build_path(images_directory_path.replace("/", "\\"), img["file_name"].replace("/", "\\")), dtype=np.uint8), cv2.IMREAD_UNCHANGED)
-            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        self.cap.set(1,image_number)
+        ret, img = self.cap.read()
+        
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        
+        if self.show_annotations_bool:
+            img, current_annotations = image_annotator.annotate_image(img_json, img, image_number, self.json_data)             
+
         current_image_shape = img.shape
         # resize
         img = cv2.resize(img, (self.image_view.image_witdh, self.image_view.image_height))

@@ -5,7 +5,6 @@ __pycache__/
 /libraries/
 /.vscode/
 *.pt
-/config.ini
 /resources/json/skeleton_explaination.png
 /.ipynb_checkpoints/
 /logs/

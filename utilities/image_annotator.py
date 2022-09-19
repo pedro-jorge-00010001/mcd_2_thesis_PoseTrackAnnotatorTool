@@ -149,15 +149,9 @@ def draw_skeleton(img, keypoins, color = (255,255,255), draw_circles = False):
 # from kalmanfilter import KalmanFilter
 # kf = KalmanFilter()
 
-def annotate_image(image, image_number, json_data, images_directory_path):    
+def annotate_image(image,img, image_number, json_data):    
 
     anotations = json_data["annotations"]
-
-    path = utils.build_path(images_directory_path.replace("/", "\\"), image["file_name"].replace("/", "\\"))
-    #path = image["file_name"]
-    img = cv2.imdecode(np.fromfile(path, dtype=np.uint8), cv2.IMREAD_UNCHANGED)
-    img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
-    #img =  np.zeros(img.shape, np.uint8)
     anotations_of_current_image = list(filter(lambda f: (f["image_id"] == image["id"]), anotations))
     characteristics = []
     if 'characteristics' in json_data:
