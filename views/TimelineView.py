@@ -113,7 +113,7 @@ class TimelineView(Frame):
         
         pop = Toplevel(self.master)
         pop.title("Annotation: " + selected_tag['text'])
-        pop.iconbitmap(r"resources\images\edit.ico")
+        #pop.iconbitmap(r"resources\images\edit.ico")
         pop.geometry("%dx%d+%d+%d" % (240, 110, event.x_root, event.y_root))
         pop.tkraise(self.timeline)
         pop.wm_resizable(False,False)
@@ -161,7 +161,7 @@ class TimelineView(Frame):
             height=self.timeline_height, width = self.timeline_width, 
             extend=True,  zoom_enabled = False, 
             start = 0.0, 
-            resolution= 0.022, tick_resolution = 1.0,
+            resolution= 0.03, tick_resolution = 1.0,
             unit = 's',
             categories={self.get_number_to_string(key):{"text": "Person-{}".format(key)} for key in annotations_track_ids},
             finish = float(images_number-1), snap_margin = 2

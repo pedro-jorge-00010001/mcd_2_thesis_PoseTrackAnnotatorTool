@@ -9,7 +9,7 @@ from utilities.deepsort import *
 
 
 import sys
-sys.path.append(r'libraries\yolov7')
+sys.path.append(r'libraries/yolov7')
 
 from libraries.yolov7 import hubconf
 #load models
@@ -17,7 +17,7 @@ from libraries.yolov7 import hubconf
 print("Searching model in the libraries")
 
 
-yolo_model = hubconf.custom('libraries\yolov7\yolov7.pt')
+yolo_model = hubconf.custom('libraries/yolov7/yolov7.pt')
 
 
 

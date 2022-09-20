@@ -81,7 +81,7 @@ class ImageView(Frame):
             pop = Toplevel(self.master)
             pop.title("Id: " + str(person_selected_id))
             pop.geometry("%dx%d+%d+%d" % (240, 45, event.x_root, event.y_root))
-            pop.iconbitmap(r"resources\images\edit.ico")
+            #pop.iconbitmap(r"resources\images\edit.ico")
             pop.tkraise(self._image)
             pop.wm_resizable(False,False)
             
