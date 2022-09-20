@@ -254,8 +254,7 @@ class Gui:
         self.timeline_view.update_timeline(len(self.json_data["images"]), annotations_track_ids)
         self.timeline_view.load_data(self.json_data.get("actions", None))
         self.visualize()
-        #characteristics
-        #actions
+
     
     def _update_id_in_json(self, person_selected_id, new_person_id, option, topic):
         if topic in self.json_data:
@@ -281,7 +280,6 @@ class Gui:
         annotations_of_person_selected = list(filter(lambda f: (f["track_id"] == person_selected_id ), element_list))
         image_id = int(annotations_of_person_selected[0]["image_id"])
         self.set_image(image_id)
-        pass
 
     def remove_person_from_json(self, person_selected_id):
         value_dict = {

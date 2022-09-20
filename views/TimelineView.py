@@ -22,6 +22,7 @@ class TimelineView(Frame):
         self.timeline = TimeLine(
             master = container
         )
+        self.container = container
         self.timeline.draw_timeline()
         # Right click menu
         self.timeline._canvas_categories.bind_all()
@@ -156,7 +157,7 @@ class TimelineView(Frame):
         self.timeline.destroy()
         self._images_number = images_number
         
-        self.timeline.__init__(master = self._parent.master, 
+        self.timeline.__init__(master = self.container, 
             height=self.timeline_height, width = self.timeline_width, 
             extend=True,  zoom_enabled = False, 
             start = 0.0, 
@@ -169,7 +170,9 @@ class TimelineView(Frame):
         self.timeline.draw_timeline()   
         self.timeline._canvas_ticks.bind("<ButtonRelease-1>", self.move_time_pointer_event)
         self.timeline._timeline.bind("<ButtonPress-3>", self.timeline_rclick_event)
-        self.timeline.grid(row=2)
+        self.timeline.pack(
+            anchor="center", expand="false", fill="x", side="bottom"
+        )
         self.timeline._timeline.bind("<Double-Button-1>", self.double_click_event)
 
     def load_data(self, actions):

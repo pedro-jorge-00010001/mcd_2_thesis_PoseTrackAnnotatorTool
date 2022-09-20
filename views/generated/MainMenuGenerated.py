@@ -8,14 +8,12 @@ class MainMenuGenerated:
         # build ui
         self.master = tk.Tk() if master is None else tk.Toplevel(master)
         self.master.configure(height=200, width=200)
-        self.master.geometry("1440x960")
+        self.master.geometry("1550x960")
         self.frame10 = tk.Frame(self.master)
         self.frame10.configure(height=200, width=200)
         self.timeline_view = ttk.Frame(self.frame10)
-        self.timeline_view.configure(height=0, width=200)
-        self.timeline_view.pack(
-            anchor="center", expand="false", fill="x", side="bottom"
-        )
+        self.timeline_view.configure(height=200, width=200)
+        self.timeline_view.pack(expand="false", fill="both", side="bottom")
         self.notebook4 = ttk.Notebook(self.frame10)
         self.notebook4.configure(height=200, width=200)
         self.image_view = ttk.Frame(self.notebook4)
@@ -43,7 +41,14 @@ class MainMenuGenerated:
         self.hide_button.pack(side="top")
         self.hide_button.configure(command=self.hide_event)
         self.slicer_button = ttk.Scale(self.frame1)
-        self.slicer_button.configure(orient="horizontal")
+        self.slicer_value = tk.IntVar()
+        self.slicer_button.configure(
+            cursor="hand2",
+            from_=550,
+            orient="horizontal",
+            to=1000,
+            variable=self.slicer_value,
+        )
         self.slicer_button.pack(side="top")
         self.person_id_label = ttk.Label(self.frame1)
         self.person_selected_id = tk.IntVar()
