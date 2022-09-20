@@ -1,6 +1,7 @@
+from msilib.schema import Icon
 import tkinter as tk
 from configparser import ConfigParser
-
+from tkinter import messagebox
 from views.generated.PathConfigurationGenerated import PathConfigurationGenerated
 
 class PathConfigurationView(PathConfigurationGenerated):
@@ -47,6 +48,9 @@ class PathConfigurationView(PathConfigurationGenerated):
 
         with open('config.ini', 'w') as configfile:
             self.config.write(configfile)
+        self.destroy()
+        messagebox.showinfo('Paths', 'The data is loaded', icon = messagebox.INFO)
+        
     
     #EVENTS
     def onRadioButtonChange(self, *args):

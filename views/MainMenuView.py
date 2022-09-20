@@ -30,6 +30,10 @@ class MainMenuView(MainMenuGenerated):
         self.age_group_combobox.bind("<<ComboboxSelected>>",lambda e: self.frame1.focus())
         self.gender_combobox.bind("<<ComboboxSelected>>",lambda e: self.frame1.focus())
         self.master.protocol("WM_DELETE_WINDOW", self._on_closing_main_window)
+        left_key_cmd = self.master.register(self.left_key)
+        right_key_cmd = self.master.register(self.right_key)
+        self.master.bind('<Left>', left_key_cmd)
+        self.master.bind('<Right>', right_key_cmd)
 
     def _init_custom_views(self):
         self.image_view = ImageView(self, self.image_view)
@@ -324,3 +328,16 @@ class MainMenuView(MainMenuGenerated):
         annotations_of_person_selected = list(filter(lambda f: (f["track_id"] == person_selected_id ), element_list))
         image_id = int(annotations_of_person_selected[0]["image_id"])
         self.set_image(image_id)
+
+    def left_key(self):
+        self.pause_image_flag = True
+        self.left_images_number += 2
+        self.visualize()
+
+    def right_key(self):
+        # self.left_images_number += 1
+        self.pause_image_flag = True
+        if self.left_images_number == 1 : 
+            self.left_images_number += 1
+
+        self.visualize()
