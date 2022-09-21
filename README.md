@@ -1,34 +1,32 @@
-### To do (pose_track_annotator_tool_app):
 
-- ~~Add frame slicer or chooser~~
-- ~~Add age groups~~
-    - ~~First see what are the best groups that divide peoples~~
-- ~~Add action anotator menu~~
-    ~~Maybe some ideas from here: https://www.youtube.com/watch?v=I5Aq2asP83Y~~
-    ~~https://boleehci.com/wp-content/uploads/2019/12/lee_Ubicomp_2019.pdf~~
-- Show how many skeletons are, and how many are fully labeled
+## How to open the app
+- Open visual studio on the folder project and simply run the class tool.py
+- Another way to run it run the following command on the project folder
+```python
+  python3 tool.py
+```
 
 
-### To do (person_id_tracker_app):
+## Tutorial
 
-- ~~Save the annotations that came directly from the data and not the prediction of the tracker~~
 
-### GPU support: https://www.tensorflow.org/install/gpu
 
-## Libraries
+- Application layout
 
-### GUI
-#### Tkinter
-- https://ttkwidgets.readthedocs.io/en/sphinx_doc/ttkwidgets/ttkwidgets/ttkwidgets.TimeLine.html#
-- https://ttkwidgets.readthedocs.io/en/sphinx_doc/_modules/ttkwidgets/timeline.html#TimeLine.create_scroll_region
-- https://ttkwidgets.readthedocs.io/en/latest/examples/TimeLine.html
+  ![App Screenshot](https://media.giphy.com/media/eUr5swl0alDQhcxCTO/giphy.gif)
 
-### Human Pose Estimation
-- OpenPose https://github.com/CMU-Perceptual-Computing-Lab/openpose
-- MoveNet https://tfhub.dev/google/movenet/multipose/lightning/1
+- How to open a file to annotate?
 
-### Person detection
-- YoloV5 https://www.youtube.com/watch?v=tFNJGim3FXw
+    ![App Screenshot](https://media.giphy.com/media/bbeU5HZAP94oCdi1Kz/giphy.gif )
 
-### Human silhoutte extractor
-- Human silhoutte extractor https://github.com/jordankzf/human-silhouette-extractor
+- How to select a person and write caracterisitcs?
+
+   ![App Screenshota](https://media.giphy.com/media/NEAWp0GtanKlacmYXE/giphy.gif)
+
+- How to change person Id, remove annotation from current frame or forever?
+
+  ![](https://media.giphy.com/media/joPfsdWsWVXYk1KqoQ/giphy.gif)
+
+- How to go directly to a frame were the person appear?
+
+  ![](https://media.giphy.com/media/GGSgFqYUeKLXKL7J1a/giphy.gif)
