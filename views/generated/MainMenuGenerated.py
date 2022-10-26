@@ -50,14 +50,23 @@ class MainMenuGenerated:
             variable=self.slicer_value,
         )
         self.slicer_button.pack(side="top")
-        self.person_id_label = ttk.Label(self.frame1)
-        self.person_selected_id = tk.IntVar()
+        self.frame3 = tk.Frame(self.frame1)
+        self.frame3.configure(height=200, width=200)
+        self.remove_annotation_button = ttk.Button(self.frame3)
+        self.img_user1 = tk.PhotoImage(file="resources/images/user.png")
+        self.remove_annotation_button.configure(image=self.img_user1)
+        self.remove_annotation_button.pack(expand="false", side="right")
+        self.remove_annotation_button.configure(command=self.remove_annotation_event)
+        self.person_id_label = ttk.Label(self.frame3)
+        self.person_selected_id = tk.IntVar(value=None)
         self.person_id_label.configure(
-            font="{Consolas} 16 {bold}",
+            font="{Consolas} 20 {bold}",
             justify="left",
+            text="None",
             textvariable=self.person_selected_id,
         )
-        self.person_id_label.pack(side="top")
+        self.person_id_label.pack(anchor="w", fill="x", side="left")
+        self.frame3.pack(side="top")
         self.gender_label = ttk.Label(self.frame1)
         self.gender_label.configure(text="Gender")
         self.gender_label.pack(side="top")
@@ -122,6 +131,9 @@ class MainMenuGenerated:
         pass
 
     def hide_event(self):
+        pass
+
+    def remove_annotation_event(self):
         pass
 
     def save_event(self):

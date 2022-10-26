@@ -1,6 +1,8 @@
 
+from asyncore import read
 import json
 from tkinter import filedialog
+from turtle import width
 from utilities import utils
 from utilities import image_annotator
 import cv2 as cv
@@ -10,6 +12,9 @@ from libraries.human_silhouette_extractor import human_silhoutte_extractor
 import math
 import re
 import csv
+import math
+
+from utilities.videoreader import VideoReader
 
 def clamp(n, minn, maxn):
         return max(min(maxn, n), minn)
@@ -108,9 +113,9 @@ def remove_black_borders(image):
     return image[np.min(y_nonzero):np.max(y_nonzero), np.min(x_nonzero):np.max(x_nonzero)]
 
 annotation_path = filedialog.askopenfilename(filetypes = [("Json files", ".json")])
-#annotation_path = r"C:/Users/pedroj/Desktop/Projects/PoseTrackAnnotatorTool/data/annotations/000001_bonn_train.json"
-directory_path = filedialog.askdirectory(title="Select directory")
-#directory_path = r"C:/Users/pedroj/Desktop/Projects/PoseTrackAnnotatorTool/data/images"
+# directory_path = filedialog.askdirectory(title="Select directory")
+video_reader = VideoReader()
+
 data = None
 
 with open(annotation_path) as json_file:
@@ -144,9 +149,12 @@ for annotation in annotations:
 
     if  number_of_valid_keypoints > 8:
         image = list(filter(lambda f: (f["id"] == annotation["image_id"]), images))[0]
+        frame_id = image["frame_id"]
+        img = video_reader.read_frame_by_number(frame_id)
         image_path = image["file_name"]
-        path = utils.build_path(directory_path.replace("/", "\\"), image_path.replace("/", "\\"))
-        img = cv.imdecode(np.fromfile(path, dtype=np.uint8), cv.IMREAD_UNCHANGED)
+
+        # path = utils.build_path(directory_path.replace("/", "\\"), image_path.replace("/", "\\"))
+        # img = cv.imdecode(np.fromfile(path, dtype=np.uint8), cv.IMREAD_UNCHANGED)
         xmax_crop_reverse =  xmax 
         ymax_crop_reverse = ymax 
         #img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
@@ -180,7 +188,9 @@ for annotation in annotations:
 
         # Filter silhoute bad extractions
         #The percentage of black cannot be greather than 70%
-        if (int(percentage_of_black_pix*100) <= 70):
+        minimum_pixel_density = 20*64
+        width, height, _ = final.shape
+        if (not math.isnan(percentage_of_black_pix) and int(percentage_of_black_pix*100) <= 70 and minimum_pixel_density < width*height):
           # angle = getOrientation(new_points, final)
           # angle = -(180 -int(np.rad2deg(angle)) - 90)
           # #print(angle)
@@ -191,9 +201,10 @@ for annotation in annotations:
 
           # How to save it
           csv_columns = ['video_id','frame_number','person_id','gender','age_group','image_path','keypoints']
-          splited_vector = directory_path.split("/")
+          # splited_vector = directory_path.split("/")
           #video_id
-          video_id = splited_vector[len(splited_vector)-1]
+          # video_id = splited_vector[len(splited_vector)-1]
+          video_id = video_reader.get_file_name()
           #person_id
           person_id = annotation['track_id']
           #gender

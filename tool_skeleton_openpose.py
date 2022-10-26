@@ -11,11 +11,24 @@ import argparse
 from tkinter import filedialog
 import glob
 
+last_keypoints = None
+last_output_data = None
 def get_keypoints(img):
-    datum = op.Datum()
-    datum.cvInputData = img
-    opWrapper.emplaceAndPop(op.VectorDatum([datum]))
-    return datum.poseKeypoints, datum.cvOutputData
+    global last_keypoints
+    global last_output_data
+    if img is not None:
+        datum = op.Datum()
+        datum.cvInputData = img
+        opWrapper.emplaceAndPop(op.VectorDatum([datum]))
+        if datum.poseKeypoints is not None:
+            last_keypoints = datum.poseKeypoints
+        if datum.cvOutputData is not None:
+            last_output_data = datum.cvOutputData
+        return datum.poseKeypoints, datum.cvOutputData
+    else:
+        return last_keypoints, last_output_data
+
+
 
 try:
     # Import Openpose (Windows/Ubuntu/OSX)

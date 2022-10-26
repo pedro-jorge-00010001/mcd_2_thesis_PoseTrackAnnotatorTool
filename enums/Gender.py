@@ -12,3 +12,11 @@ class Gender(Enum):
             return Gender(Gender.F)
         else:
             return Gender(Gender.NONE)
+    
+    def get_caption(value):
+        if value == Gender(Gender.M):
+            return "m"
+        elif value ==  Gender(Gender.F):
+            return "f"
+        else:
+            return Gender(Gender.NONE)

@@ -48,7 +48,6 @@ class PathConfigurationView(PathConfigurationGenerated):
 
         with open('config.ini', 'w') as configfile:
             self.config.write(configfile)
-        self.destroy()
         messagebox.showinfo('Paths', 'The data is loaded', icon = messagebox.INFO)
         
     
@@ -60,4 +59,6 @@ class PathConfigurationView(PathConfigurationGenerated):
         else:
             self.path_choser_mp4.configure(state = tk.DISABLED)
             self.path_choser_folder.configure(state = tk.NORMAL)
+
+
 

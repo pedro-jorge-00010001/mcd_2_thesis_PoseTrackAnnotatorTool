@@ -269,12 +269,15 @@ if __name__=="__main__":
                 path = filename + "_" + str(counter) + ".jpg"
                 path_to_save = directory +"\\" + filename + "_" + str(counter) + ".jpg"
                 ret, frame = cap.read()
-                if frame is not None:
-                    cv2.imwrite(path_to_save, frame)  
-                if frame is None:
-                    break
+                # if frame is not None:
+                #     cv2.imwrite(path_to_save, frame)  
+                # if frame is None:
+                #     break
                 # read image
-                run(frame)
+                if frame is not None:
+                    run(frame)
+                else:
+                    break
             
             write_json(directory_path, filename = filename)
 

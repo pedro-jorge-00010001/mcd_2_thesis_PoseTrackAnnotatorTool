@@ -16,6 +16,8 @@ import numpy as np
 import os
 from tkinter import messagebox
 from utilities.lazy_decoder import LazyDecoder
+from pathlib import Path
+
 
 class MainMenuView(MainMenuGenerated):
     def __init__(self, master=None):
@@ -32,8 +34,10 @@ class MainMenuView(MainMenuGenerated):
         self.master.protocol("WM_DELETE_WINDOW", self._on_closing_main_window)
         left_key_cmd = self.master.register(self.left_key)
         right_key_cmd = self.master.register(self.right_key)
+        space_key_cmd = self.master.register(self.space_key)
         self.master.bind('<Left>', left_key_cmd)
         self.master.bind('<Right>', right_key_cmd)
+        self.master.bind('<space>', space_key_cmd)
 
     def _init_custom_views(self):
         self.image_view = ImageView(self, self.image_view)
@@ -50,7 +54,7 @@ class MainMenuView(MainMenuGenerated):
         self.json_data = None
         self.left_images_number = 0
         self.pause_bool = False
-        self.pause_image_flag = False
+        self.pause_image_flag = True
         self.slicer_value.set(int(self.config['frames']['slicer_value']))
 
         self.show_annotations_bool = True
@@ -58,24 +62,35 @@ class MainMenuView(MainMenuGenerated):
         if self.video_enabled:
             self.cap = cv2.VideoCapture(self.config['paths']['video_path'])
 
+
     def _on_closing_main_window(self):
-        image_number = len(self.json_data["images"]) - self.left_images_number - 1
-        self.config.set('frames', 'frame_id', str(image_number))
-        self.config.set('frames', 'slicer_value', str(self.slicer_value.get()))
-        with open('config.ini', 'w') as configfile:
-            self.config.write(configfile)
+        try:
+            image_number = len(self.json_data["images"]) - self.left_images_number - 1
+            self.config.set('frames', 'frame_id', str(image_number))
+            self.config.set('frames', 'slicer_value', str(self.slicer_value.get()))
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
+        except:
+            pass
         self.master.destroy()
 
     def _load_data(self):
-        last_frame = int(self.config['frames']['frame_id'])
+
         annotation_path = self.config['paths']['annotation_path']
-        if os.path.exists(annotation_path):            
+        if os.path.exists(annotation_path) :            
             with open(annotation_path) as json_file:
                 data = json.load(json_file, cls=LazyDecoder)       
             
+
             self.json_data = data
             self.left_images_number = len(self.json_data["images"])
             
+            if len(self.json_data["images"]) > int(self.config['frames']['frame_id']):
+                last_frame = int(self.config['frames']['frame_id'])
+            else:
+                last_frame = 0
+                self.config.set('frames','frame_id', str(0))
+
             annotations = self.json_data["annotations"]
             annotations_track_ids = [x['track_id'] for x in annotations]
             annotations_track_ids = list(sorted(set(annotations_track_ids)))
@@ -83,16 +98,27 @@ class MainMenuView(MainMenuGenerated):
                 path = utils.build_path(self.config['paths']['folder_path'].replace("/", "\\"), self.json_data["images"][0]["file_name"].replace("/", "\\"))
                 if os.path.exists(path):
                     self.set_image(0)
-            
+                    # update timeline
+                    self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
+                    
+                    #Load timeline data
+                    self.timeline_view.load_data(self.json_data.get("actions", None))
+                    self.set_image(last_frame)
                 else:
                     messagebox.showerror(title="Image not found", message="The image referenced by the annotation cannot be found\nPlease verify the images path")
-
-            # update timeline
-            self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
+            else:
+                if os.path.exists(self.config['paths']['video_path']):
+                    self.set_image(0)
+                    # update timeline
+                    self.timeline_view.update_timeline(self.left_images_number, annotations_track_ids)
+                    
+                    #Load timeline data
+                    self.timeline_view.load_data(self.json_data.get("actions", None))
+                    self.set_image(last_frame)
             
-            #Load timeline data
-            self.timeline_view.load_data(self.json_data.get("actions", None))
-            self.set_image(last_frame)
+                else:
+                    messagebox.showerror(title="Video not found", message="The video referenced by the annotation cannot be found\nPlease verify the images path")
+
         else:
             messagebox.showerror(title="Annotation not found", message="The selected annotation doesn't exist\nPlease verify the path or select other annotation")
 
@@ -112,18 +138,19 @@ class MainMenuView(MainMenuGenerated):
     #TOOL events
     #Overrides MainMenuGenerated
     def play_event(self):
-        self.pause_bool = False
-        json_path = self.config['paths']['annotation_path']
         if self.pause_image_flag == True:
-            self.pause_image_flag = False
-            self.image_view.after(200, self.visualize)
-        else:
-            if json_path != "":
-                data = None
-                with open(json_path) as json_file:
-                    data = json.load(json_file)       
-                self.json_data = data
-                self.visualize()
+            self.pause_bool = False
+            json_path = self.config['paths']['annotation_path']
+            if self.pause_image_flag == True:
+                self.pause_image_flag = False
+                self.image_view.after(200, self.visualize)
+            else:
+                if json_path != "":
+                    data = None
+                    with open(json_path) as json_file:
+                        data = json.load(json_file)       
+                    self.json_data = data
+                    self.visualize()
     
     # #Overrides MainMenuGenerated
     def pause_event(self):
@@ -134,6 +161,11 @@ class MainMenuView(MainMenuGenerated):
         self.left_images_number += 1
         self.show_annotations_bool = not self.show_annotations_bool
         self.visualize()
+
+    # #Overrides MainMenuGenerated  
+    def remove_annotation_event(self):
+        if self.person_selected_id.get() is not None:
+            self.remove_person_from_json(self.person_selected_id.get())
 
     # #Overrides MainMenuGenerated
     def save_event(self):
@@ -146,10 +178,21 @@ class MainMenuView(MainMenuGenerated):
                             'age_group': age_group
                         }
             self._update_json_info('characteristics', value_dict)
-            with open(self.config['paths']['annotation_path'], 'w', encoding='utf-8') as f:
-                json.dump(self.json_data, f, ensure_ascii=False, indent=4)
-            self.left_images_number += 1
-            self.visualize()
+        
+        with open(self.config['paths']['annotation_path'], 'w', encoding='utf-8') as f:
+            json.dump(self.json_data, f, ensure_ascii=False, indent=4)
+        self.left_images_number += 1
+        self.visualize()
+        try:
+            image_number = len(self.json_data["images"]) - self.left_images_number - 1
+            self.config.set('frames', 'frame_id', str(image_number))
+            self.config.set('frames', 'slicer_value', str(self.slicer_value.get()))
+            with open('config.ini', 'w') as configfile:
+                self.config.write(configfile)
+        except:
+            pass
+
+        
 
     #Logic functions
     def visualize(self):
@@ -213,14 +256,13 @@ class MainMenuView(MainMenuGenerated):
 
     def change_person_selected_label(self, person_selected_id):
         self.person_selected_id.set(person_selected_id)
-            
         #Update interface
         if 'characteristics' in self.json_data:
             other_json = self.json_data['characteristics']
-            track_id_value = list(filter(lambda f: (f["track_id"] == self.person_selected_id), other_json))
+            track_id_value = list(filter(lambda f: (f["track_id"] == self.person_selected_id.get()), other_json))
             if track_id_value != []:
-                gender = Gender[track_id_value[0]['gender']].value
-                age = AgeGroup[track_id_value[0]['age_group']].value
+                gender = Gender.get_caption(Gender[track_id_value[0]['gender']])
+                age = AgeGroup.get_caption(AgeGroup[track_id_value[0]['age_group']])
                 self.gender_selected.set(gender)
                 self.age_group_selected.set(age)
             else:
@@ -233,6 +275,7 @@ class MainMenuView(MainMenuGenerated):
         self.video_enabled = self.config['paths']['video_path'] != ""
         if self.video_enabled:
             self.cap = cv2.VideoCapture(self.config['paths']['video_path'])
+        self._load_data()
     
 
     def update_person_id_in_json(self, person_selected_id, new_person_id, option = "n"):
@@ -341,3 +384,6 @@ class MainMenuView(MainMenuGenerated):
             self.left_images_number += 1
 
         self.visualize()
+
+    def space_key(self):
+        self.pause_image_flag = True

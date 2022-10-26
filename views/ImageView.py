@@ -2,7 +2,7 @@
 from ctypes import util
 from tkinter import *
 from utilities import utils
-
+from views.popups.ChangeIdPopUp import ChangeIdPopUp
 class ImageView(Frame):
 
     def __init__(self, parent, container):
@@ -61,48 +61,18 @@ class ImageView(Frame):
     def _image_rclick_event(self, event):
         self._point_rclick = (event.x, event.y)
         self._image_rclick_menu.tk_popup(event.x_root,event.y_root)
+
+
+
     
     def _edit_id_event(self, event):
-        def click_edit_button(option):
-            try :
-                new_id = int(name_label.get())
-                self._parent.update_person_id_in_json(person_selected_id, new_id, option = option)
-                pop.destroy()
-            except Exception as e: 
-                print(f"Erro {e}")
-                pass
-
         if self._current_annotations is not None and len(self._current_annotations):
             #Point
             xP = event.x
             yP = event.y
             person_selected_id, _ = self._get_selected_person_id(xP,yP)
-
-            pop = Toplevel(self.master)
-            pop.title("Id: " + str(person_selected_id))
-            pop.geometry("%dx%d+%d+%d" % (240, 45, event.x_root, event.y_root))
-            #pop.iconbitmap(r"resources/images/edit.ico")
-            pop.tkraise(self._image)
-            pop.wm_resizable(False,False)
-            
-            # Edit name
-            Label(pop, text="New Id").grid(row=0, column=0)
-            name_label = StringVar(pop)
-            name_label.set(person_selected_id)
-            Entry(pop, textvariable = name_label).grid(row=0, column=1)
-
-            #Buttons
-            button_all = Button(pop, text="Current", command = lambda: click_edit_button("c"), bd=1)
-            button_all.grid(row=1, column=0,sticky='nesw')
-
-            button_prev = Button(pop, text="Previous", command = lambda: click_edit_button("p"), bd=1)
-            button_prev.grid(row=1, column=1,sticky='nesw')
-
-            button_next = Button(pop, text="Next", command = lambda: click_edit_button("n"), bd=1)
-            button_next.grid(row=1, column=2,sticky='nesw')
-            
-            button_all = Button(pop, text="  All  ", command = lambda: click_edit_button("a"), bd=1)
-            button_all.grid(row=1, column=3,sticky='nesw')
+            pop = ChangeIdPopUp(parent = self, person_selected_id = person_selected_id)
+            pop.set_position(event.x_root, event.y_root)
 
 
 

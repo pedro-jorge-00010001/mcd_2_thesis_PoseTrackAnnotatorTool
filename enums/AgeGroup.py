@@ -18,3 +18,15 @@ class AgeGroup(Enum):
             return AgeGroup(AgeGroup.SENIOR)
         else:
             return AgeGroup(AgeGroup.NONE)
+
+    def get_caption(value):
+        if value == AgeGroup(AgeGroup.CHILD):
+            return "00-14(Child)"
+        elif value ==  AgeGroup(AgeGroup.YOUNG):
+            return "15-24(Young)"
+        elif value == AgeGroup(AgeGroup.ADULT):
+            return "25-64(Adult)"
+        elif value == AgeGroup(AgeGroup.SENIOR):
+            return "65+(Senior)"
+        else:
+            return AgeGroup(AgeGroup.NONE)
