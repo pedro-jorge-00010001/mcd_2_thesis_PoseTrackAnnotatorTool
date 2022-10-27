@@ -3,6 +3,7 @@ from ctypes import util
 from tkinter import *
 from utilities import utils
 from views.popups.ChangeIdPopUp import ChangeIdPopUp
+
 class ImageView(Frame):
 
     def __init__(self, parent, container):
@@ -13,14 +14,22 @@ class ImageView(Frame):
         #attributes
         self._parent = parent
         self._current_image_shape = (0,0,0)
-        screen_width = container.winfo_screenwidth()
+        #screen_width = container.winfo_screenwidth()
+        #screen_height = container.winfo_screenheight()
         
-        self._image_witdh = 1200
-        self._image_height = 500
 
-        if screen_width >= 1920:
-            self._image_witdh = 1450
-            self._image_height = 790  
+        self._image_witdh = 1500
+        self._image_height = 800  
+
+        #self._image_witdh = 1200
+        #self._image_height = 500
+
+        # if screen_width >= 1920:
+        #     self._image_witdh = 1450
+        #     self._image_height = 790
+        # elif screen_width >=2160:
+        #     self._image_height = 800  
+        #     self._image_witdh = 1500
 
         self._current_annotations = None
 

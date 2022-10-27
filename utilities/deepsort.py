@@ -1,10 +1,16 @@
 #NOTE: Deep sort needs the format `top_left_x, top_left_y, width,height
 
-from libraries.deep_sort import nn_matching
-from libraries.deep_sort.tracker import Tracker 
-from libraries.application_util import preprocessing as prep
-from libraries.application_util import visualization
-from libraries.deep_sort.detection import Detection
+
+import sys
+sys.path.append(r"lib/3rdparty/deep_sort")
+import deep_sort
+import application_util
+
+from deep_sort import nn_matching
+from deep_sort.tracker import Tracker 
+from application_util import preprocessing as prep
+from application_util import visualization
+from deep_sort.detection import Detection
 
 import numpy as np
 

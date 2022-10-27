@@ -9,15 +9,14 @@ from utilities.deepsort import *
 
 
 import sys
-sys.path.append(r'libraries/yolov7')
-
-from libraries.yolov7 import hubconf
+sys.path.append(r'lib/3rdparty/yolov7')
+import hubconf
 #load models
 
 print("Searching model in the libraries")
 
-
-yolo_model = hubconf.custom('libraries/yolov7/yolov7.pt')
+#To download the model go to the repository of yolov7
+yolo_model = hubconf.custom(r'lib/models/yolov7.pt')
 
 
 

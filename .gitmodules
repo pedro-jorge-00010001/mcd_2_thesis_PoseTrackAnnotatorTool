@@ -1,3 +1,12 @@
 [submodule "lib/3rdparty/openpose"]
 	path = lib/3rdparty/openpose
 	url = https://github.com/CMU-Perceptual-Computing-Lab/openpose.git
+[submodule "lib/3rdparty/human_silhoutte_extractor"]
+	path = lib/3rdparty/human_silhoutte_extractor
+	url = https://github.com/jordankzf/human-silhouette-extractor.git
+[submodule "lib/3rdparty/yolov7"]
+	path = lib/3rdparty/yolov7
+	url = https://github.com/WongKinYiu/yolov7.git
+[submodule "lib/3rdparty/deep_sort"]
+	path = lib/3rdparty/deep_sort
+	url = https://github.com/pedro-jorge-00010001/deep_sort.git
