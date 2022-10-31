@@ -1,5 +1,5 @@
 /data/train_models_data/
-__pycache__/
+**/__pycache__/
 /libraries/openpose/
 /libraries/yolo/
 /libraries/

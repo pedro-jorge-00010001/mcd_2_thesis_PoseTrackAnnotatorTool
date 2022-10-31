@@ -8,7 +8,14 @@ from utilities import image_annotator
 import cv2 as cv
 import numpy as np
 from math import atan2, cos, sin, sqrt, pi
-from libraries.human_silhouette_extractor import human_silhoutte_extractor
+
+import importlib
+import sys
+sys.path.append(r'lib/3rdparty')
+
+
+#human_silhoutte_extractor = __import__("human_silhoutte_extractor.Proposed Solution")
+human_silhoutte_extractor = importlib.import_module("human_silhoutte_extractor.Proposed Solution")
 import math
 import re
 import csv
@@ -17,7 +24,7 @@ import math
 from utilities.videoreader import VideoReader
 
 def clamp(n, minn, maxn):
-        return max(min(maxn, n), minn)
+  return max(min(maxn, n), minn)
         
 def drawAxis(img, p_, q_, color, scale):
     p = list(p_)

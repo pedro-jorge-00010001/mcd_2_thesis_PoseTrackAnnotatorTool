@@ -29,6 +29,9 @@ def get_keypoints(img):
         return last_keypoints, last_output_data
 
 
+#How to install Openpose
+#https://github.com/CMU-Perceptual-Computing-Lab/openpose/#installation
+#https://www.youtube.com/watch?v=QC9GTb6Wsb4&t=2s
 
 try:
     # Import Openpose (Windows/Ubuntu/OSX)
@@ -37,8 +40,8 @@ try:
         # Windows Import
         if platform == "win32":
             # Change these variables to point to the correct folder (Release/x64 etc.)
-            sys.path.append(r'libraries\openpose\build\python\openpose\Release');      
-            os.environ['PATH']  = os.environ['PATH'] + ';' + r'libraries\openpose\build\x64\Release;' + r'libraries\openpose\build\bin;'
+            sys.path.append(r'lib/3rdparty/openpose/build/python/openpose/Release');      
+            os.environ['PATH']  = os.environ['PATH'] + ';' + r'lib/3rdparty/openpose/build/x64/Release;' + r'lib/3rdparty/openpose/build/bin;'
             import pyopenpose as op
         else:
             # Change these variables to point to the correct folder (Release/x64 etc.)
@@ -53,7 +56,7 @@ try:
 
     parser = argparse.ArgumentParser()    
     params = dict()
-    params["model_folder"] = r"libraries\openpose\models"
+    params["model_folder"] = r"lib/3rdparty/openpose/models"
     
     # Starting OpenPose
     opWrapper = op.WrapperPython()
